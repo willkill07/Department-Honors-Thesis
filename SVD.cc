@@ -31,6 +31,20 @@ using std::vector;
 using std::sqrt;
 using std::pow;
 
+using Correction = std::pair<double, Matrix>;
+
+struct Node {
+  Node* left;
+  Node* right;
+  std::pair<Matrix, Matrix> data;
+
+  Node (const Matrix& m1, const Matrix& m2)
+  : left(nullptr)
+  , right(nullptr)
+  , data (m1, m2) {}
+};
+
+
 /************************************************************/
 // Function prototypes/global vars/typedefs
 
@@ -40,14 +54,11 @@ void tridiagonalizer(Matrix &B);
 
 void similarityProducer(Matrix &WTW, double RSQ);
 
-template <bool T1, bool O1, bool T2, bool O2>
-void block_diagonal(MatrixT<T1, O1> &B, MatrixT<T2, O2> &Beta);
+Node* divideNConquer(Matrix &B);
 
-void divide(Matrix &B);
+Correction block_diagonal(Matrix &B);
 
-void qr(Matrix &B);
-
-void qr_acceleration(Matrix &B, double e);
+Matrix secular_solver(const Matrix &diag, Correction Beta);
 
 void printMatrix(Matrix A);
 
@@ -112,8 +123,11 @@ void build(Matrix &A) {
   
   static std::minstd_rand rng{9999};
   static std::uniform_real_distribution<double> dist(-10.0, 10.0);
-  for (int i = 0; i < A.rows(); ++i) {
-    for (int j = 0; j < A.colms(); ++j) {
+
+  for (int i = 0; i < A.rows(); ++i) 
+  {
+    for (int j = 0; j < A.colms(); ++j) 
+    {
       A(i, j) = dist (rng);
     }
   }
@@ -160,8 +174,10 @@ similarityProducer - by reference, takes in the matrix, which will further be us
 basis for the similarity transformation matrix.
 */
 void similarityProducer(Matrix &WTW, double RSQ) {
-  for (int i = 0; i < WTW.rows(); ++i) {
-    for (int j = 0; j < WTW.colms(); ++j) {
+  for (int i = 0; i < WTW.rows(); ++i) 
+  {
+    for (int j = 0; j < WTW.colms(); ++j) 
+    {
       WTW(i, j) = -(4 / RSQ) * WTW(i, j);
     }
     WTW(i, i) += 1;
@@ -175,18 +191,105 @@ void similarityProducer(Matrix &WTW, double RSQ) {
 Divide - initial step of Cuppen's Divide and Conquer Eigenvalue Extraction algorithm.
 /////////////////////////////////UNDER CONSTRUCTION/////////////////////////////////
 */
-void divide(Matrix &B) {
-  Matrix Beta(B.rows(), B.colms());
-  block_diagonal(B, Beta);
+Node* divideNConquer(Matrix &B)
+{
 
-  if (B.rows() < 2) {
-    // return
-  } else {
-    Matrix hi = Matrix::cut(B, B.rows() / 2, 1);
-    Matrix lo = Matrix::cut(B, B.colms() - (B.colms() / 2), 0);
-    // return Beta + [(divide (hi))    (divide (lo))]
+  int n = B.rows();
+  Correction Beta = block_diagonal(B);
+
+  if (n == 2) 
+  {
+
+
+    double a  = B(0, 0);
+    double d = B(1, 1);
+    double c  = B(1, 0);
+    double l1, l2;
+
+    Matrix ortho (n, n);
+    Matrix diag  (n, n);
+
+    l1, diag(0, 0) = ((a + d) / 2) + sqrt( pow((a + d), 2) - ((a * d) - pow(c, 2)));
+    l2, diag(1, 1) = ((a + d) / 2) - sqrt( pow((a + d), 2) - ((a * d) - pow(c, 2)));
+
+    ortho(0, 0), ortho(0, 1) = 1;
+    ortho(1, 0) = (l1 - d) / c;
+    ortho(1, 1) = (l2 - d) / c;
+
+    Node* data = new Node(ortho, diag);
+
+    return data;
+  } 
+  else 
+  {
+
+    Matrix hi = B.cut( n / 2, 1);
+    Matrix lo = B.cut(n - (n / 2), 0);
+
+    Node* hiNode = divideNConquer(hi);
+    Node* loNode = divideNConquer(lo);
+
+    Matrix ortho  = Matrix::combine ((hiNode -> data).first, (loNode -> data).first);
+    Matrix orthoT = Matrix::combine (((hiNode -> data).first).transpose(), ((loNode -> data).first).transpose());
+    Matrix diag   = Matrix::combine ((hiNode -> data).second, (loNode -> data).second);
+    Matrix C = (1 / (sqrt(2))) * (orthoT * Beta.second);
+    Beta = std::make_pair(2 * Beta.first, C);
+
+    delete hiNode;
+    delete loNode;
+    return new Node (ortho, secular_solver(diag, Beta));
   }
 }
+
+
+
+
+Matrix secular_solver(const Matrix &D, Correction Beta)
+{
+
+  double n = D.rows();
+  double e = pow(10, -14);
+  double sumN, sumD, total;
+  Matrix Z = Beta.second;
+  double p = Beta.first;
+
+  //setting up initial approximation for eigenvalues
+  Matrix l (n, 0);
+
+  for(int i = 0; i < n; ++i)
+  {
+    if(i == (n - 1))
+    {
+      double z = (Z * Z.transpose())(0, 0);
+      l(i, 0) = (p * z) / 2;
+    }
+    else
+    {
+      l(i, 0) = (l(i + 1, 0) - l(i, 0)) / 2;
+    }
+  }
+
+
+  for(int i = 0; i < n; ++i)
+  {
+    do
+    {
+      sumN, sumD, total = 0;
+      for(int j = 0; j < n; ++j)
+      {
+        sumN = p * (pow(Z(j, 0), 2) / (D(j, j) - l(i, 0)));
+        sumD = - (p * (pow(Z(j, 0), 2) / (pow((D(j, j) - l(i, 0)), 2))));
+      }
+
+      total = (1 + sumN) / sumD;
+      l(i, 0) += total;
+
+    } while (total > e);
+  }
+
+  return l;
+}
+
 
 
 /*
@@ -194,76 +297,35 @@ block_diagonal - routine that makes the original matrix, taken in by reference,
 block diagonal and additionally updates the "factored-out" matrix beta with corresponding
 elements.
 */
-template <bool T1, bool O1, bool T2, bool O2>
-void block_diagonal(MatrixT<T1, O1> &B, MatrixT<T2, O2> &Beta) {
 
-  double m = B.rows() / 2;
+Correction
+block_diagonal(Matrix &B)
+{
+  int n = B.rows();
+  Matrix Beta (n, 1);
+
+  double m = n / 2;
   double beta_value = B(m, m - 1);
 
-  Beta(m, m) = Beta(m - 1, m - 1) = Beta(m, m - 1) = Beta(m - 1, m) =
-      beta_value;
+  Beta(m, 1) = Beta(m - 1, 1) = beta_value;
 
   B(m, m - 1) = B(m - 1, m) = 0;
   B(m, m) -= beta_value;
   B(m - 1, m - 1) -= beta_value;
+
+  return std::make_pair(beta_value, Beta);
 }
-
-
-
-/*
-QR - The main portion of the QR Eigenvalue extraction algorithm. By reference, takes in the original
-matrix and treats it as the matrix R which, at the end of the process, would be Upper Triangular. 
-Finds the final states of R and orthogonal matrix Q, using rotation matrices, defined here as P.
-Overall, performs only one iteration of the algorithm.
-*/
-void qr(Matrix &R)
-{
-  //initialize values of i, j, assuming B(i,i) above B(j,i)
-  
-  // Rotation Matrix
-  auto Q = Matrix::identity(R.rows());  
-
-  
-  for(int i = 0, j = 1; j < R.rows(); ++i, ++j)
-  {
-
-    auto P = Matrix::identity(R.rows());
-
-    P(i,i) = P(j,j) = R(i,i) / (sqrt( pow(R(i,i), 2) + pow(R(i, j), 2)));
-    P(i, j) = R(i,j) / (sqrt( pow(R(i,i), 2) + pow(R(i, j), 2)));
-    P(j, i) = - P(i, j);
-
-    R = P * R;
-    Q = P * Q;
-    
-  }
-
-  //Final Reduction. The goal is to get the subdiagonal =~ 0
-  R = Q * R;
-}
-
-
-
-/*
-QR_acceleration - calles the QR routine to compress the subdiagonal elements to within the
-range of e-range away from zero.
-*/
-void qr_acceleration(Matrix &M, double e)
-{
-  /*Perform several tests, determine if any of the subdiagonal values decreases faster.
-  Based on that data, set up the comparison-call structure.
-  */
-}
-
-
 
 
 /*
 Printing - Simple routine, created for the testing purposes.
 */
-void printMatrix(const Matrix A) {
-  for (int i = 0; i < A.rows(); ++i) {
-    for (int j = 0; j < A.colms(); ++j) {
+void printMatrix(const Matrix A) 
+{
+  for (int i = 0; i < A.rows(); ++i) 
+  {
+    for (int j = 0; j < A.colms(); ++j) 
+    {
       printf("%13.5f", A(i, j));
     }
     puts("");

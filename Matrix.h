@@ -20,6 +20,46 @@ private:
   double *data_;
 
 public:
+
+  using iterator = double*;
+  using const_iterator = const double*;
+  using iterator_category = std::random_access_iterator_tag;
+  using value_type = double;
+  using reference = value_type&;
+  using pointer = value_type*;
+  using const_reference = const value_type&;
+  using const_pointer = const value_type*;
+
+  using default_type = MatrixT<false, true>;
+
+  iterator begin() {
+    return data_;
+  }
+
+  const_iterator begin() const {
+    return data_;
+  }
+
+  const_iterator cbegin() const {
+    return data_;
+  }
+
+  size_t size() const {
+    return (size_t)rows_ * colms_;
+  }
+
+  iterator end() {
+    return begin() + size();
+  }
+
+  const_iterator end() const {
+    return begin() + size();
+  }
+
+  const_iterator cend() const {
+    return begin() + size();
+  }
+  
   double &operator()(int r, int c) {
     if constexpr (Transpose) {
       return data_[c * colms_ + r];
@@ -73,6 +113,14 @@ public:
       : rows_(other.rows_), colms_(other.colms_), data_(other.data_) {
     if constexpr (Owning) {
       data_ = new double[rows_ * colms_];
+    }
+    if constexpr (Transpose ^ Trans) {
+      for (int r = 0; r < other.rows(); ++r) {
+        for (int c = 0; c < other.colms(); ++c) {
+          (*this) (c, r) = other(r, c);
+        }
+      }
+    } else {
       std::copy_n(other.data_, rows_ * colms_, data_);
     }
   }
@@ -112,8 +160,16 @@ public:
     return *this;
   }
 
-  template <bool T1, bool O1>
-  static MatrixT cut(const MatrixT<T1, O1> &origin, int stitch, bool up) {
+  template <typename Scalar>
+  std::enable_if_t<std::is_arithmetic_v<Scalar>, MatrixT&>
+  operator*= (Scalar s) {
+    for (auto & v : *this) {
+      v *= s;
+    }
+    return *this;
+  }
+
+  default_type cut(int stitch, bool up) const {
     // dimension of symmetric & region
     int m, s, b;
 
@@ -121,24 +177,56 @@ public:
       m = b = stitch;
       s = 0;
     } else {
-      m = origin.rows() - stitch;
+      m = rows() - stitch;
       s = stitch;
-      b = origin.rows();
+      b = rows();
     }
 
-    MatrixT piece(m, m);
+    default_type piece(m, m);
 
     for (s; s < b; ++s) {
       for (int cs = s; cs < b; ++cs) {
-        piece(s, cs) = origin(s, cs);
+        piece(s, cs) = (*this)(s, cs);
       }
     }
 
     return piece;
   }
 
-  static MatrixT identity(const int size) {
-    MatrixT result {size, size};
+  template <bool T1, bool O1, bool T2, bool O2>
+  static default_type combine(const MatrixT<T1, O1> &hi, const MatrixT<T2, O2> &lo) {
+   
+    int a = hi.rows();
+    int b = hi.colms();
+    int c = lo.rows();
+    int d = lo.colms();
+
+    default_type res(a + c, b + d);
+
+    for(int i = 0; i < a; ++i)
+    {
+      for(int j = 0; j < b; ++j)
+      {
+        res(i, j) = hi(i, j);
+      }
+    }
+
+    for(int i = a; i < (a + c); ++i)
+    {
+      for(int j = b; j < (b + d); ++j)
+      {
+        res(i, j) = hi(i, j);
+      }
+    }
+
+    return res;
+  }
+
+
+  static default_type identity(const int size) {
+
+    default_type result {size, size};
+    
     for( int i = 0; i < size; ++i)
     {
       result (i, i) = 1;
@@ -151,19 +239,44 @@ using Matrix = MatrixT<>;
 
 template <bool T1, bool T2, bool O1, bool O2>
 Matrix operator*(MatrixT<T1, O1> const &a, MatrixT<T2, O2> const &b) {
-  if (a.colms() != b.rows()) {
+
+  int ar = a.rows();
+  int ac = a.colms();
+  int br = b.rows();
+  int bc = b.colms();
+
+  if (ac != br) {
     throw std::runtime_error("Illegal dimensions given. Please, adhere to the formal rules");
   }
-  Matrix res(a.rows(), b.colms());
+  Matrix res(ar, bc);
 
-  for (int i = 0; i < a.rows(); ++i) {
-    for (int j = 0; j < b.colms(); ++j) {
-      for (int k = 0; k < a.colms(); ++k) {
+  for (int i = 0; i < ar; ++i) {
+    for (int j = 0; j < bc; ++j) {
+      for (int k = 0; k < ac; ++k) {
         res(i, j) += a(i, k) * b(k, j);
       }
     }
   }
   return res;
+}
+
+
+template <bool T1, bool O1, typename Scalar, typename = std::enable_if_t<std::is_arithmetic_v<Scalar>> >
+Matrix operator*(const MatrixT<T1, O1> &M, Scalar a) {
+  Matrix A (M);
+  for (auto & val : A) {
+    val *= a;
+  }
+  return A;
+}
+
+template <bool T1, bool O1, typename Scalar, typename = std::enable_if_t<std::is_arithmetic_v<Scalar>>>
+Matrix operator*(Scalar a, const MatrixT<T1, O1> &M) {
+  Matrix A (M);
+  for (auto & val : A) {
+    val *= a;
+  }
+  return A;
 }
 
 #endif
