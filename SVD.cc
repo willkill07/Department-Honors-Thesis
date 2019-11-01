@@ -32,18 +32,7 @@ using std::sqrt;
 using std::pow;
 
 using Correction = std::pair<double, Matrix>;
-
-struct Node {
-  Node* left;
-  Node* right;
-  std::pair<Matrix, Matrix> data;
-
-  Node (const Matrix& m1, const Matrix& m2)
-  : left(nullptr)
-  , right(nullptr)
-  , data (m1, m2) {}
-};
-
+using MatrixPair = std::pair<Matrix, Matrix>;
 
 /************************************************************/
 // Function prototypes/global vars/typedefs
@@ -52,15 +41,14 @@ void build(Matrix &A);
 
 void tridiagonalizer(Matrix &B);
 
-void similarityProducer(Matrix &WTW, double RSQ);
-
-Node* divideNConquer(Matrix &B);
+MatrixPair divideNConquer(Matrix &B);
 
 Correction block_diagonal(Matrix &B);
 
 Matrix secular_solver(const Matrix &diag, Correction Beta);
 
-void printMatrix(Matrix A);
+template <bool O, bool T>
+void printMatrix(const MatrixT<O,T> &A);
 
 /************************************************************/
 // Main function
@@ -111,10 +99,11 @@ int main(int argc, char *argv[]) {
   TEST(3, 3) = -1;
 
   // A * (A ^ T)
-
-  tridiagonalizer(TEST);
   
-  //divideNConquer(TEST);
+  tridiagonalizer(TEST);
+  printMatrix(TEST);
+  auto [ortho, eigenvalues] = divideNConquer(TEST);
+  printMatrix(ortho);
 }
 
 
@@ -142,62 +131,48 @@ Tridiagonalizer - Implementation of Householder's method of turning a
 symmetric matrix into a symmetric tridiagonal one. Modifies the original by refernce,
 uses a helper routine for the similarity transformation matrix production.
 */
+
+
 void tridiagonalizer(Matrix &B) {
-  
-  int n = B.rows();
   // producing a column vector, replicating the last column of B
+
+  double alpha, RSQ;
+  const int n = B.rows();
+  
   for (int k = 0; k < n - 2; ++k) {
 
-    double alpha, RSQ = 0;
-    Matrix W(n, k + 1);
+    alpha = 0;
+    RSQ = 0;
 
+    Matrix W(B.rows(), 1);
     // for k = 0 ...  < n-2
-    for (int i = k + 1; i < n; ++i) {
-      alpha += std::pow(B(i, k), 2);
-      W(i, k) = (0.5) * B(i, k);
-    }
 
-    alpha = -(std::sqrt(alpha));
-    RSQ = (std::pow(alpha, 2) - (alpha * B(k + 1, k)));
-
-    W(k, k) = 0;
-    W(k + 1, k) = (0.5) * (B(k + 1, k) - alpha);
-
-    auto WTW = W * W.transpose();
-    //transpose does not work
-    printMatrix(W);
-    similarityProducer(WTW, RSQ);
-    printMatrix(WTW);
-
-    B = WTW * B * WTW;
-    //printMatrix(B);
-  }
-}
-
-
-
-/*
-similarityProducer - by reference, takes in the matrix, which will further be used as a 
-basis for the similarity transformation matrix.
-*/
-void similarityProducer(Matrix &WTW, double RSQ) 
-{
-  int n = WTW.rows();
-
-  //define addition operator
-  WTW = Matrix::identity(n) + ((-4 / RSQ) * WTW);
-  
-  /*
-  for (int i = 0; i < WTW.rows(); ++i) 
-  {
-    for (int j = 0; j < WTW.colms(); ++j) 
+    for (int i = k + 1; i < n; ++i) 
     {
-      WTW(i, j) = -(4 / RSQ) * WTW(i, j);
+      alpha += std::pow(B(i, k), 2);
+      W(i, 0) = (0.5) * B(i, k);
     }
-    WTW(i, i) += 1;
+    const double leadingVal = B(k + 1, k);
+
+    alpha = -(std::sqrt(alpha)); //finally defining alpha
+    RSQ = std::pow(alpha, 2) - (alpha * leadingVal);  //2r^2
+    
+
+    W(k + 1, 0) = (0.5) * (leadingVal - alpha); 
+
+
+
+    //alright from here
+
+    
+
+    auto WTW = W * W.transpose(); 
+    WTW = Matrix::identity(n) + ((-4 / RSQ) * WTW);
+    B = WTW * B * WTW;
+
   }
-  */
 }
+
 
 
 
@@ -206,16 +181,13 @@ void similarityProducer(Matrix &WTW, double RSQ)
 Divide - initial step of Cuppen's Divide and Conquer Eigenvalue Extraction algorithm.
 /////////////////////////////////UNDER CONSTRUCTION/////////////////////////////////
 */
-Node* divideNConquer(Matrix &B)
+MatrixPair divideNConquer(Matrix &B)
 {
-
   int n = B.rows();
   Correction Beta = block_diagonal(B);
 
   if (n == 2) 
   {
-
-
     double a  = B(0, 0);
     double d = B(1, 1);
     double c  = B(1, 0);
@@ -238,18 +210,18 @@ Node* divideNConquer(Matrix &B)
     ortho(1, 0) = v12 / v1m;
     ortho(1, 1) = v22 / v2m;
 
-    return new Node(ortho, diag);
+    return MatrixPair(ortho, diag);
   } 
   else 
   {
     Matrix hi = B.cut( n / 2, 1);
     Matrix lo = B.cut(n - (n / 2), 0);
 
-    Node* hiNode = divideNConquer(hi);
-    Node* loNode = divideNConquer(lo);
+    const MatrixPair & hiNode = divideNConquer(hi);
+    const MatrixPair & loNode = divideNConquer(lo);
 
-    const auto & [o1, d1] = hiNode -> data;
-    const auto & [o2, d2] = loNode -> data;
+    const auto & [o1, d1] = hiNode;
+    const auto & [o2, d2] = loNode;
 
     Matrix ortho  = Matrix::combine (o1, o2);
     Matrix orthoT = Matrix::combine (o1.transpose(), o2.transpose());
@@ -257,10 +229,7 @@ Node* divideNConquer(Matrix &B)
     Matrix C = (1 / (sqrt(2))) * (orthoT * Beta.second);
     Beta = std::make_pair(2 * Beta.first, C);
 
-    delete hiNode;
-    delete loNode;
-
-    return new Node (ortho, secular_solver(diag, Beta));
+    return MatrixPair (ortho, secular_solver(diag, Beta));
   }
 }
 
@@ -277,18 +246,18 @@ Matrix secular_solver(const Matrix &D, Correction Beta)
   double p = Beta.first;
 
   //setting up initial approximation for eigenvalues
-  Matrix l (n, 1);
+  Matrix l (n, n);
 
   for(int i = 0; i < n; ++i)
   {
     if(i == (n - 1))
     {
       double z = (Z.transpose() * Z)(0, 0);
-      l(i, 0) = (p * z) / 2;
+      l(i, i) = (p * z) / 2;
     }
     else
     {
-      l(i, 0) = (l(i + 1, 0) - l(i, 0)) / 2;
+      l(i, i) = (D(i + 1, 0) - D(i, 0)) / 2;
     }
   }
 
@@ -300,12 +269,12 @@ Matrix secular_solver(const Matrix &D, Correction Beta)
       sumN, sumD, total = 0;
       for(int j = 0; j < n; ++j)
       {
-        sumN = p * (pow(Z(j, 0), 2) / (D(j, j) - l(i, 0)));
-        sumD = - (p * (pow(Z(j, 0), 2) / (pow((D(j, j) - l(i, 0)), 2))));
+        sumN = p * (pow(Z(j, 0), 2) / (D(j, j) - l(i, i)));
+        sumD = - (p * (pow(Z(j, 0), 2) / (pow((D(j, j) - l(i, i)), 2))));
       }
 
       total = (1 + sumN) / sumD;
-      l(i, 0) += total;
+      l(i, i) += total;
 
     } while (total > e);
   }
@@ -343,7 +312,8 @@ block_diagonal(Matrix &B)
 /*
 Printing - Simple routine, created for the testing purposes.
 */
-void printMatrix(const Matrix A) 
+template <bool O, bool T>
+void printMatrix(const MatrixT<O,T> &A) 
 {
   for (int i = 0; i < A.rows(); ++i) 
   {

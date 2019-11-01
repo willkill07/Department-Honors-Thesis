@@ -99,6 +99,7 @@ public:
 
   MatrixT(int r, int c) : rows_(r), colms_(c), data_(nullptr) {
     data_ = new double[c * r];
+    std::fill_n(data_, c * r, 0.0);
   }
 
   ~MatrixT() {
@@ -106,6 +107,8 @@ public:
       delete[] data_;
     }
   }
+
+//
 
   template <bool Trans, bool Own,
             typename = std::enable_if_t<(Trans ^ Transpose) | (Own ^ Owning)>>
@@ -150,6 +153,8 @@ public:
     }
     return *this;
   }
+
+//
 
   MatrixT &operator=(MatrixT &&other) {
     std::swap(rows_, other.rows_);
@@ -251,8 +256,8 @@ Matrix operator*(MatrixT<T1, O1> const &a, MatrixT<T2, O2> const &b) {
   Matrix res(ar, bc);
 
   for (int i = 0; i < ar; ++i) {
-    for (int j = 0; j < bc; ++j) {
-      for (int k = 0; k < ac; ++k) {
+    for (int k = 0; k < ac; ++k) {
+      for (int j = 0; j < bc; ++j) {
         res(i, j) += a(i, k) * b(k, j);
       }
     }
@@ -278,6 +283,7 @@ Matrix operator*(Scalar a, const MatrixT<T1, O1> &M) {
   }
   return A;
 }
+
 
 template <bool T1, bool T2, bool O1, bool O2>
 Matrix operator+(MatrixT<T1, O1> const &a, MatrixT<T2, O2> const &b) {
