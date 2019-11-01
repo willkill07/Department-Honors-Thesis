@@ -111,7 +111,10 @@ int main(int argc, char *argv[]) {
   TEST(3, 3) = -1;
 
   // A * (A ^ T)
+
   tridiagonalizer(TEST);
+  
+  //divideNConquer(TEST);
 }
 
 
@@ -140,15 +143,16 @@ symmetric matrix into a symmetric tridiagonal one. Modifies the original by refe
 uses a helper routine for the similarity transformation matrix production.
 */
 void tridiagonalizer(Matrix &B) {
+  
+  int n = B.rows();
   // producing a column vector, replicating the last column of B
-
-  for (int k = 0; k < B.rows() - 2; ++k) {
+  for (int k = 0; k < n - 2; ++k) {
 
     double alpha, RSQ = 0;
-    Matrix W(B.rows(), k + 1);
+    Matrix W(n, k + 1);
 
     // for k = 0 ...  < n-2
-    for (int i = k + 1; i < B.rows(); ++i) {
+    for (int i = k + 1; i < n; ++i) {
       alpha += std::pow(B(i, k), 2);
       W(i, k) = (0.5) * B(i, k);
     }
@@ -160,10 +164,13 @@ void tridiagonalizer(Matrix &B) {
     W(k + 1, k) = (0.5) * (B(k + 1, k) - alpha);
 
     auto WTW = W * W.transpose();
+    //transpose does not work
+    printMatrix(W);
     similarityProducer(WTW, RSQ);
+    printMatrix(WTW);
 
     B = WTW * B * WTW;
-    printMatrix(B);
+    //printMatrix(B);
   }
 }
 
@@ -173,7 +180,13 @@ void tridiagonalizer(Matrix &B) {
 similarityProducer - by reference, takes in the matrix, which will further be used as a 
 basis for the similarity transformation matrix.
 */
-void similarityProducer(Matrix &WTW, double RSQ) {
+void similarityProducer(Matrix &WTW, double RSQ) 
+{
+  int n = WTW.rows();
+
+  //define addition operator
+  //WTW = Matrix::identity(n) - ((4 / RSQ) * WTW);
+  
   for (int i = 0; i < WTW.rows(); ++i) 
   {
     for (int j = 0; j < WTW.colms(); ++j) 
@@ -182,6 +195,7 @@ void similarityProducer(Matrix &WTW, double RSQ) {
     }
     WTW(i, i) += 1;
   }
+  
 }
 
 
@@ -209,29 +223,36 @@ Node* divideNConquer(Matrix &B)
     Matrix ortho (n, n);
     Matrix diag  (n, n);
 
-    l1, diag(0, 0) = ((a + d) / 2) + sqrt( pow((a + d), 2) - ((a * d) - pow(c, 2)));
-    l2, diag(1, 1) = ((a + d) / 2) - sqrt( pow((a + d), 2) - ((a * d) - pow(c, 2)));
+    l1 = diag(0, 0) = ((a + d) / 2) + sqrt( pow((a + d), 2) - ((a * d) - pow(c, 2)));
+    l2 = diag(1, 1) = ((a + d) / 2) - sqrt( pow((a + d), 2) - ((a * d) - pow(c, 2)));
+    
+    //eigenvector magnitudes
+    double v12 = ((l1 - d) / c);
+    double v22 = ((l2 - d) / c);
+    double v1m = sqrt( 1 + pow( v12, 2));
+    double v2m = sqrt( 1 + pow( v22, 2));
 
-    ortho(0, 0), ortho(0, 1) = 1;
-    ortho(1, 0) = (l1 - d) / c;
-    ortho(1, 1) = (l2 - d) / c;
+    ortho(0, 0) =   1 / v1m;
+    ortho(0, 1) =   1 / v2m;
+    ortho(1, 0) = v12 / v1m;
+    ortho(1, 1) = v22 / v2m;
 
-    Node* data = new Node(ortho, diag);
-
-    return data;
+    return new Node(ortho, diag);
   } 
   else 
   {
-
     Matrix hi = B.cut( n / 2, 1);
     Matrix lo = B.cut(n - (n / 2), 0);
 
     Node* hiNode = divideNConquer(hi);
     Node* loNode = divideNConquer(lo);
 
-    Matrix ortho  = Matrix::combine ((hiNode -> data).first, (loNode -> data).first);
-    Matrix orthoT = Matrix::combine (((hiNode -> data).first).transpose(), ((loNode -> data).first).transpose());
-    Matrix diag   = Matrix::combine ((hiNode -> data).second, (loNode -> data).second);
+    const auto & [o1, d1] = hiNode -> data;
+    const auto & [o2, d2] = loNode -> data;
+
+    Matrix ortho  = Matrix::combine (o1, o2);
+    Matrix orthoT = Matrix::combine (o1.transpose(), o2.transpose());
+    Matrix diag   = Matrix::combine (d1, d2);
     Matrix C = (1 / (sqrt(2))) * (orthoT * Beta.second);
     Beta = std::make_pair(2 * Beta.first, C);
 
@@ -260,7 +281,7 @@ Matrix secular_solver(const Matrix &D, Correction Beta)
   {
     if(i == (n - 1))
     {
-      double z = (Z * Z.transpose())(0, 0);
+      double z = (Z.transpose() * Z)(0, 0);
       l(i, 0) = (p * z) / 2;
     }
     else
