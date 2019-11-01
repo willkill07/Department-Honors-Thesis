@@ -185,8 +185,9 @@ void similarityProducer(Matrix &WTW, double RSQ)
   int n = WTW.rows();
 
   //define addition operator
-  //WTW = Matrix::identity(n) - ((4 / RSQ) * WTW);
+  WTW = Matrix::identity(n) + ((-4 / RSQ) * WTW);
   
+  /*
   for (int i = 0; i < WTW.rows(); ++i) 
   {
     for (int j = 0; j < WTW.colms(); ++j) 
@@ -195,7 +196,7 @@ void similarityProducer(Matrix &WTW, double RSQ)
     }
     WTW(i, i) += 1;
   }
-  
+  */
 }
 
 
@@ -258,6 +259,7 @@ Node* divideNConquer(Matrix &B)
 
     delete hiNode;
     delete loNode;
+
     return new Node (ortho, secular_solver(diag, Beta));
   }
 }
@@ -275,7 +277,7 @@ Matrix secular_solver(const Matrix &D, Correction Beta)
   double p = Beta.first;
 
   //setting up initial approximation for eigenvalues
-  Matrix l (n, 0);
+  Matrix l (n, 1);
 
   for(int i = 0; i < n; ++i)
   {

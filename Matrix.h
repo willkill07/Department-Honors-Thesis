@@ -279,4 +279,29 @@ Matrix operator*(Scalar a, const MatrixT<T1, O1> &M) {
   return A;
 }
 
+template <bool T1, bool T2, bool O1, bool O2>
+Matrix operator+(MatrixT<T1, O1> const &a, MatrixT<T2, O2> const &b) {
+
+  int ar = a.rows();
+  int ac = a.colms();
+  int br = b.rows();
+  int bc = b.colms();
+
+  if ((ar != br) && (ac != bc)) {
+    throw std::runtime_error("Illegal dimensions given. Please, adhere to the formal rules");
+  }
+
+
+Matrix res(ar, bc);
+
+  for (int i = 0; i < ar; ++i) {
+    for (int j = 0; j < ac; ++j) {
+        res(i, j) = a(i, j) + b(i, j);
+      }
+    }
+
+  return res;
+}
+
+
 #endif
