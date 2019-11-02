@@ -101,9 +101,45 @@ int main(int argc, char *argv[]) {
   // A * (A ^ T)
   
   tridiagonalizer(TEST);
-  printMatrix(TEST);
-  auto [ortho, eigenvalues] = divideNConquer(TEST);
-  printMatrix(ortho);
+  //printMatrix(TEST);
+  //auto [ortho, eigenvalues] = divideNConquer(TEST);
+  //printMatrix(eigenvalues);
+
+  //TEST 2 - Secular Solver
+  
+  Matrix l (4, 4);
+  l(0, 0) = 1;
+  l(1, 1) = 3;
+  l(2, 2) = 5;
+  l(3, 3) = 7;
+
+  Matrix c (4, 1);
+  c(0, 0) = 0.5;
+  c(1, 0) = 0.7;
+  c(2, 0) = 0.4;
+  c(3, 0) = 0.2;
+
+  Correction Beta = std::make_pair(6, c);
+
+  secular_solver(l, Beta);
+  
+
+// TEST 3 - Secular Solver
+/*
+ Matrix l (2, 2);
+  l(0, 0) = 1;
+  l(1, 1) = 2;
+  
+
+  Matrix c (2, 1);
+  c(0, 0) = 3;
+  c(1, 0) = 4;
+
+  Correction Beta = std::make_pair(6, c);
+
+  secular_solver(l, Beta);
+*/
+
 }
 
 
@@ -141,8 +177,7 @@ void tridiagonalizer(Matrix &B) {
   
   for (int k = 0; k < n - 2; ++k) {
 
-    alpha = 0;
-    RSQ = 0;
+    alpha = RSQ = 0;
 
     Matrix W(B.rows(), 1);
     // for k = 0 ...  < n-2
@@ -152,22 +187,20 @@ void tridiagonalizer(Matrix &B) {
       alpha += std::pow(B(i, k), 2);
       W(i, 0) = (0.5) * B(i, k);
     }
+
     const double leadingVal = B(k + 1, k);
-
-    alpha = -(std::sqrt(alpha)); //finally defining alpha
-    RSQ = std::pow(alpha, 2) - (alpha * leadingVal);  //2r^2
+    //final alpha definition
+    alpha = -(std::sqrt(alpha)); 
+    //represents 2r^2
+    RSQ = std::pow(alpha, 2) - (alpha * leadingVal); 
     
-
+    //leading entry in w-vector
     W(k + 1, 0) = (0.5) * (leadingVal - alpha); 
 
-
-
-    //alright from here
-
-    
-
+    //producting a similarity transformation
     auto WTW = W * W.transpose(); 
     WTW = Matrix::identity(n) + ((-4 / RSQ) * WTW);
+    //transforming the original matrix
     B = WTW * B * WTW;
 
   }
@@ -240,10 +273,10 @@ Matrix secular_solver(const Matrix &D, Correction Beta)
 {
 
   double n = D.rows();
-  double e = pow(10, -14);
+  double e = pow(10, -10);
   double sumN, sumD, total;
-  Matrix Z = Beta.second;
   double p = Beta.first;
+  Matrix Z = Beta.second;
 
   //setting up initial approximation for eigenvalues
   Matrix l (n, n);
@@ -253,32 +286,34 @@ Matrix secular_solver(const Matrix &D, Correction Beta)
     if(i == (n - 1))
     {
       double z = (Z.transpose() * Z)(0, 0);
-      l(i, i) = (p * z) / 2;
+      l(i, i) = (2 * (D(i, i)) +  (p * z)) / 2;
     }
     else
     {
-      l(i, i) = (D(i + 1, 0) - D(i, 0)) / 2;
+      l(i, i) = (D(i + 1, i + 1) + D(i, i)) / 2;
     }
   }
 
-
+  //printMatrix(l);
+  
   for(int i = 0; i < n; ++i)
   {
+    int cnt = 0;
     do
     {
-      sumN, sumD, total = 0;
+      sumN = sumD = total = 0;
       for(int j = 0; j < n; ++j)
       {
-        sumN = p * (pow(Z(j, 0), 2) / (D(j, j) - l(i, i)));
-        sumD = - (p * (pow(Z(j, 0), 2) / (pow((D(j, j) - l(i, i)), 2))));
+        sumN += (pow(Z(j, 0), 2) / (D(j, j) - l(i, i)));
+        sumD += ((pow(Z(j, 0), 2) / (pow((D(j, j) - l(i, i)), 2))));
       }
-
-      total = (1 + sumN) / sumD;
+      total = -(1 + (p * sumN)) / (p * sumD);
       l(i, i) += total;
 
-    } while (total > e);
+    } while ( std::abs(total) > e);
+    
   }
-
+  //printMatrix(l);
   return l;
 }
 
