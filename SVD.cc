@@ -101,12 +101,21 @@ int main(int argc, char *argv[]) {
   // A * (A ^ T)
   
   tridiagonalizer(TEST);
-  //printMatrix(TEST);
-  //auto [ortho, eigenvalues] = divideNConquer(TEST);
-  //printMatrix(eigenvalues);
 
-  //TEST 2 - Secular Solver
+  /*TEST DNC - 1
+  Matrix l (2, 2);
+  l(0, 0) = 1;
+  l(0, 1) = 3;
+  l(1, 0) = 3;
+  l(1, 1) = 2;
+  */
+
+  printMatrix(TEST);
+  auto [ortho, eigenvalues] = divideNConquer(TEST);
+  printMatrix(eigenvalues);
   
+  //TEST 2 - Secular Solver
+  /*
   Matrix l (4, 4);
   l(0, 0) = 1;
   l(1, 1) = 3;
@@ -217,7 +226,6 @@ Divide - initial step of Cuppen's Divide and Conquer Eigenvalue Extraction algor
 MatrixPair divideNConquer(Matrix &B)
 {
   int n = B.rows();
-  Correction Beta = block_diagonal(B);
 
   if (n == 2) 
   {
@@ -229,8 +237,13 @@ MatrixPair divideNConquer(Matrix &B)
     Matrix ortho (n, n);
     Matrix diag  (n, n);
 
-    l1 = diag(0, 0) = ((a + d) / 2) + sqrt( pow((a + d), 2) - ((a * d) - pow(c, 2)));
-    l2 = diag(1, 1) = ((a + d) / 2) - sqrt( pow((a + d), 2) - ((a * d) - pow(c, 2)));
+     
+
+      printMatrix(B);
+
+    l1 = diag(0, 0) = ((a + d) + sqrt( pow((a + d), 2) - (4 * ((a * d) - pow(c, 2))))) / 2;
+   
+    l2 = diag(1, 1) = ((a + d) - sqrt( pow((a + d), 2) - (4 * ((a * d) - pow(c, 2))))) / 2;
     
     //eigenvector magnitudes
     double v12 = ((l1 - d) / c);
@@ -243,15 +256,27 @@ MatrixPair divideNConquer(Matrix &B)
     ortho(1, 0) = v12 / v1m;
     ortho(1, 1) = v22 / v2m;
 
+    
+
     return MatrixPair(ortho, diag);
   } 
   else 
   {
+    Correction Beta = block_diagonal(B);
+
     Matrix hi = B.cut( n / 2, 1);
     Matrix lo = B.cut(n - (n / 2), 0);
 
+//
+    printMatrix(B);
+    printMatrix(hi);
+    printMatrix(lo);
+//
+    
     const MatrixPair & hiNode = divideNConquer(hi);
     const MatrixPair & loNode = divideNConquer(lo);
+
+    
 
     const auto & [o1, d1] = hiNode;
     const auto & [o2, d2] = loNode;
@@ -265,9 +290,6 @@ MatrixPair divideNConquer(Matrix &B)
     return MatrixPair (ortho, secular_solver(diag, Beta));
   }
 }
-
-
-
 
 Matrix secular_solver(const Matrix &D, Correction Beta)
 {
@@ -333,8 +355,8 @@ block_diagonal(Matrix &B)
 
   double m = n / 2;
   double beta_value = B(m, m - 1);
-
-  Beta(m, 1) = Beta(m - 1, 1) = beta_value;
+  
+  Beta(m , 0) = Beta(m - 1, 0) = 1;
 
   B(m, m - 1) = B(m - 1, m) = 0;
   B(m, m) -= beta_value;

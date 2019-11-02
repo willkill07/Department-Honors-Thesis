@@ -176,26 +176,68 @@ public:
 
   default_type cut(int stitch, bool up) const {
     // dimension of symmetric & region
-    int m, s, b;
+
 
     if (up) {
-      m = b = stitch;
-      s = 0;
-    } else {
-      m = rows() - stitch;
-      s = stitch;
-      b = rows();
+
+      default_type piece(stitch, stitch);
+
+      for (int i = 0; i < stitch; ++i) 
+      {
+        for (int j = 0; j < stitch; ++j) 
+        {
+          piece(i, j) = (*this)(i, j);
+        }
+      }
+      return piece;
+    } 
+    else 
+    {
+
+      int Lsize = rows() - stitch;
+
+      default_type piece(Lsize, Lsize);
+
+      int rowPos = stitch;
+      int colPos = stitch;
+
+      for (int i = 0; i < Lsize; ++i, ++rowPos) 
+      {
+        for (int j = 0; j < Lsize; ++j, ++colPos) 
+        {
+          piece(i, j) = (*this)(rowPos, colPos);
+        }
+      }
+
+      return piece;
     }
 
-    default_type piece(m, m);
+    
+    
+    
+    /*
+    int size, start, bound, buf;
 
-    for (s; s < b; ++s) {
-      for (int cs = s; cs < b; ++cs) {
-        piece(s, cs) = (*this)(s, cs);
+    if (up) {
+      size = bound = stitch;
+      start = buf = 0;
+    } else {
+      size = rows() - stitch;
+      start = buf = stitch;
+      bound = rows();
+    }
+
+    default_type piece(size, size);
+
+    
+    for (int i = 0; i < bound; ++i, ++start) {
+      for (int j = 0, cs = buf; cs < bound; ++j, ++cs) {
+        piece(i, j) = (*this)(start, cs);
       }
     }
+    */
 
-    return piece;
+  
   }
 
   template <bool T1, bool O1, bool T2, bool O2>
