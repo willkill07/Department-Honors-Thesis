@@ -59,7 +59,7 @@ public:
   const_iterator cend() const {
     return begin() + size();
   }
-  
+
   double &operator()(int r, int c) {
     if constexpr (Transpose) {
       return data_[c * colms_ + r];
@@ -174,75 +174,34 @@ public:
     return *this;
   }
 
-  default_type cut(int stitch, bool up) const {
-    // dimension of symmetric & region
+  default_type cut(int stitch, bool upper) const {
+    int originRows = 0;
+    int originCols = 0;
+    int rows = stitch;
+    int cols = stitch;
 
+    if (!upper) {
+      originRows = rows;
+      originCols = cols;
+      rows = this->rows() - rows;
+      cols = this->colms() - cols;
+    }
 
-    if (up) {
-
-      default_type piece(stitch, stitch);
-
-      for (int i = 0; i < stitch; ++i) 
-      {
-        for (int j = 0; j < stitch; ++j) 
-        {
-          piece(i, j) = (*this)(i, j);
-        }
-      }
-      return piece;
-    } 
-    else 
+    default_type piece(rows, cols);
+    for (int i = 0; i < rows; ++i)
     {
-
-      int Lsize = rows() - stitch;
-
-      default_type piece(Lsize, Lsize);
-
-      int rowPos = stitch;
-      int colPos = stitch;
-
-      for (int i = 0; i < Lsize; ++i, ++rowPos) 
+      for (int j = 0; j < cols; ++j)
       {
-        for (int j = 0; j < Lsize; ++j, ++colPos) 
-        {
-          piece(i, j) = (*this)(rowPos, colPos);
-        }
-      }
-
-      return piece;
-    }
-
-    
-    
-    
-    /*
-    int size, start, bound, buf;
-
-    if (up) {
-      size = bound = stitch;
-      start = buf = 0;
-    } else {
-      size = rows() - stitch;
-      start = buf = stitch;
-      bound = rows();
-    }
-
-    default_type piece(size, size);
-
-    
-    for (int i = 0; i < bound; ++i, ++start) {
-      for (int j = 0, cs = buf; cs < bound; ++j, ++cs) {
-        piece(i, j) = (*this)(start, cs);
+        piece(i, j) = (*this)(originRows + i, originCols + j);
       }
     }
-    */
+    return piece;
 
-  
   }
 
   template <bool T1, bool O1, bool T2, bool O2>
   static default_type combine(const MatrixT<T1, O1> &hi, const MatrixT<T2, O2> &lo) {
-   
+
     int a = hi.rows();
     int b = hi.colms();
     int c = lo.rows();
@@ -258,11 +217,11 @@ public:
       }
     }
 
-    for(int i = a; i < (a + c); ++i)
+    for(int i = 0; i < c; ++i)
     {
-      for(int j = b; j < (b + d); ++j)
+      for(int j = 0; j < d; ++j)
       {
-        res(i, j) = hi(i, j);
+        res(i + a, j + b) = lo(i, j);
       }
     }
 
@@ -273,7 +232,7 @@ public:
   static default_type identity(const int size) {
 
     default_type result {size, size};
-    
+
     for( int i = 0; i < size; ++i)
     {
       result (i, i) = 1;
