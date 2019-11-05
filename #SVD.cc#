@@ -45,11 +45,7 @@ MatrixPair divideNConquer(Matrix &B);
 
 Correction block_diagonal(Matrix &B);
 
-Matrix secular_solver(const Matrix &diag, const Correction &Beta);
-
-Matrix initial_e_approx(const Matrix &diag, const Correction &Beta);
-
-double secular_fun(double eigen, const Matrix&  D, const Correction & Beta);
+Matrix secular_solver(const Matrix &diag, Correction Beta);
 
 template <bool O, bool T>
 void printMatrix(const MatrixT<O,T> &A);
@@ -82,7 +78,6 @@ int main(int argc, char *argv[]) {
 
   Matrix TEST(4, 4);
 
-  /*
   TEST(0, 0) = 4;
   TEST(0, 1) = 1;
   TEST(0, 2) = -2;
@@ -102,30 +97,10 @@ int main(int argc, char *argv[]) {
   TEST(3, 1) = 1;
   TEST(3, 2) = -2;
   TEST(3, 3) = -1;
-  */
+
   // A * (A ^ T)
-
-  TEST(0, 0) = 7;
-  TEST(0, 1) = 3;
-  TEST(0, 2) = 0;
-  TEST(0, 3) = 0;
-
-  TEST(1, 0) = 3;
-  TEST(1, 1) = 1;
-  TEST(1, 2) = 2;
-  TEST(1, 3) = 0;
-
-  TEST(2, 0) = 0;
-  TEST(2, 1) = 2;
-  TEST(2, 2) = 8;
-  TEST(2, 3) = -2;
-
-  TEST(3, 0) = 0;
-  TEST(3, 1) = 0;
-  TEST(3, 2) = -2;
-  TEST(3, 3) = 3;
   
-  //tridiagonalizer(TEST);
+  tridiagonalizer(TEST);
 
   /*TEST DNC - 1
   Matrix l (2, 2);
@@ -139,7 +114,7 @@ int main(int argc, char *argv[]) {
   
   printMatrix(TEST);
   auto [ortho, eigenvalues] = divideNConquer(TEST);
-  printMatrix(eigenvalues);
+  //printMatrix(eigenvalues);
   /*
   //TEST 2 - Secular Solver
   
@@ -235,7 +210,7 @@ void tridiagonalizer(Matrix &B) {
     W(k + 1, 0) = (0.5) * (leadingVal - alpha); 
 
     //producting a similarity transformation
-    auto WTW = W * W.transpose(); 
+    auto WTW = W * W.transpose();
     WTW = Matrix::identity(n) + ((-4 / RSQ) * WTW);
     //transforming the original matrix
     B = WTW * B * WTW;
@@ -257,7 +232,6 @@ MatrixPair divideNConquer(Matrix &B)
 
   if (n == 2) 
   {
-
     double a  = B(0, 0);
     double d = B(1, 1);
     double c  = B(1, 0);
@@ -268,11 +242,12 @@ MatrixPair divideNConquer(Matrix &B)
 
 
     l1 = diag(0, 0) = ((a + d) + sqrt( pow((a + d), 2) - (4 * ((a * d) - pow(c, 2))))) / 2;
+   
     l2 = diag(1, 1) = ((a + d) - sqrt( pow((a + d), 2) - (4 * ((a * d) - pow(c, 2))))) / 2;
     
     //eigenvector magnitudes
-    double v12 = ((l1 - a) / c);
-    double v22 = ((l2 - a) / c);
+    double v12 = ((l1 - d) / c);
+    double v22 = ((l2 - d) / c);
     double v1m = sqrt( 1 + pow( v12, 2));
     double v2m = sqrt( 1 + pow( v22, 2));
 
@@ -280,6 +255,9 @@ MatrixPair divideNConquer(Matrix &B)
     ortho(0, 1) =   1 / v2m;
     ortho(1, 0) = v12 / v1m;
     ortho(1, 1) = v22 / v2m;
+
+    printMatrix(ortho);
+
     
     return MatrixPair(ortho, diag);
   } 
@@ -289,6 +267,12 @@ MatrixPair divideNConquer(Matrix &B)
 
     Matrix hi = B.cut( n / 2, 1);
     Matrix lo = B.cut(n - (n / 2), 0);
+
+//
+    //printMatrix(B);
+    //printMatrix(hi);
+    //printMatrix(lo);
+//
     
     const MatrixPair & hiNode = divideNConquer(hi);
     const MatrixPair & loNode = divideNConquer(lo);
@@ -298,119 +282,23 @@ MatrixPair divideNConquer(Matrix &B)
     const auto & [o2, d2] = loNode;
 
     Matrix ortho  = Matrix::combine (o1, o2);
-    auto orthoT = ortho.transpose();
+    Matrix orthoT = Matrix::combine (o1.transpose(), o2.transpose());
     Matrix diag   = Matrix::combine (d1, d2);
 
-    const auto & [scalar, unitVector] = Beta;
 
-    Matrix C = (1 / (sqrt(2))) * (orthoT * unitVector);
-    Beta = std::make_pair(2 * scalar, C);
+    Matrix C = (1 / (sqrt(2))) * (orthoT * Beta.second);
+    Beta = std::make_pair(2 * Beta.first, C);
 
-    auto corr = Beta.first * ( Beta.second * Beta.second.transpose());
-    auto sec = diag + corr;
-    auto thir = ortho * sec * orthoT;
+    Matrix M = ortho * (diag + (Beta.first * (Beta.second * (Beta.second).transpose()))) * orthoT;
 
-    cout <<"This has to be equal the original\n";
-    printMatrix(thir);
+    printMatrix(M);
 
     return MatrixPair (ortho, secular_solver(diag, Beta));
   }
 }
 
-template <typename Fun>
-double
-false_position (const double epsilon, Fun&& fun, double p0, double p1) {
-  const int MAX_ITERS = 1000;
-  double q0 = fun(p0);
-  double q1 = fun(p1);
-  for (int j = 2; j <= MAX_ITERS; ++j) {
-    const double p = p1 - q1 * ((p1 - p0) / (q1 - q0)); //(p1 * q0 * 0.5 - q1 * p0) / (q0 * 0.5  - q1);
-    if(abs(p - p1) < epsilon)
-    {
-      return p;
-    }
-    double q = fun(p);
-    if (q * q1 < 0) {
-      p0 = p1;
-      q0 = q1;
-    }
-    p1 = p;
-    q1 = q;
-  }
-  return nan("");
-}
-
-
-template <typename Fun>
-double
-false_position2 (const double epsilon, Fun&& fun, double p0, double p1) {
-  const int MAX_ITERS = 10000;
-  
-  for (int j = 2; j <= MAX_ITERS; ++j) 
-  {
-    const double p = (p0 * fun(p1) * 0.5 - p1 * fun(p0)) / (fun(p1) * 0.5 - fun(p0)); 
-    if(abs(fun(p)) < epsilon)
-    {
-      return p;
-    }
-    if (fun(p) * fun(p0) < 0) {
-      p1 = p;
-    } else {
-      p0 = p;
-    }
-  }
-  std::cerr << "doesn't coverge\n";
-  return nan("");
-}
-
-Matrix secular_solver( const Matrix & D, const Correction & Beta)
+Matrix secular_solver(const Matrix &D, Correction Beta)
 {
-  cout << "DIAGONAL: \n";
-  printMatrix(D);
-
-
-  const double N = D.rows();
-  const double epsilon = pow(10, -8);
-  const auto & [P, Z] = Beta;
-  Matrix l = initial_e_approx(D, Beta);
-  vector<double> buf (N + 1);
-
-  for(int i = 0; i < N; ++ i)
-  {
-    buf[i] = D(i, i);
-  }
-
-  double z = (Z.transpose() * Z)(0, 0);
-  buf[N] = (*max_element(buf.begin(), buf.end()) +  (P * z));
-  sort(buf.begin(), buf.end());
-
-  buf[0] = -1.9;
-  buf[1] = 1.9;
-  buf[2] = 6.9;
-  buf[3] = 7.9;
-  buf[4] = 11.9;
-  
-
-  auto f = [&] (double p) {
-    return secular_fun(p, D, Beta);
-  };
-
-  for(int i = 0; i < N; ++i)
-  {
-    double p0 = buf[i];
-    double p1 = buf[i + 1];
-    
-    const auto result = false_position2(epsilon, f, p0, p1);
-
-    cout << "The value of root is : " << result << "\n"; 
-  }
-  return l;
-}
-
-/*
-Matrix secular_solver( const Matrix & D, const Correction & Beta)
-{
-
   cout << "DIAGONAL: \n";
   printMatrix(D);
 
@@ -422,11 +310,23 @@ Matrix secular_solver( const Matrix & D, const Correction & Beta)
   Matrix Z = Beta.second;
 
   //setting up initial approximation for eigenvalues
-  Matrix l = initial_e_approx(D, Beta);
+  Matrix l (n, n);
 
-  cout << "Initial approximations for eigenvalues:\n";
-  printMatrix(l);
+  for(int i = 0; i < n; ++i)
+  {
+    if(i == (n - 1))
+    {
+      double z = (Z.transpose() * Z)(0, 0);
+      l(i, i) = (2 * (D(i, i)) +  (p * z)) / 2;
+    }
+    else
+    {
+      l(i, i) = (D(i + 1, i + 1) + D(i, i)) / 2;
+    }
+  }
 
+  //printMatrix(l);
+  
   for(int i = 0; i < n; ++i)
   {
     int cnt = 0;
@@ -436,18 +336,20 @@ Matrix secular_solver( const Matrix & D, const Correction & Beta)
       for(int j = 0; j < n; ++j)
       {
         sumN += (pow(Z(j, 0), 2) / (D(j, j) - l(i, i)));
-        sumD += -((pow(Z(j, 0), 2) / (pow((D(j, j) - l(i, i)), 2))));
+        sumD += ((pow(Z(j, 0), 2) / (pow((D(j, j) - l(i, i)), 2))));
       }
-      total = (1 + (p * sumN)) / (p * sumD);
+      total = -(1 + (p * sumN)) / (p * sumD);
       
       l(i, i) += total;
-      
-      cnt ++;
-    } while (std::abs(total) > e);
+      if (++cnt == 100)
+      break;
+    } while ( std::abs(total) > e);
+    
   }
+  printMatrix(l);
   return l;
 }
-*/
+
 
 
 /*
@@ -472,51 +374,6 @@ block_diagonal(Matrix &B)
   B(m - 1, m - 1) -= beta_value;
 
   return std::make_pair(beta_value, Beta);
-}
-
-
-Matrix initial_e_approx(const Matrix & diag, const Correction & Beta)
-{
-  int n = diag.rows();
-  double p = Beta.first;
-  Matrix Z = Beta.second;
-  vector<double> buf (n + 1);
-
-  for(int i = 0; i < n; ++ i)
-  {
-    buf[i] = diag(i, i);
-  }
-
-  double z = (Z.transpose() * Z)(0, 0);
-  double fin = (*max_element(buf.begin(), buf.end()) +  (p * z));
-  buf[n] = fin; 
-
-  sort(buf.begin(), buf.end());
-
-  Matrix l (n, n);
-
-  for(int i = 0; i < n; ++i)
-  {
-    l(i, i) = ((buf[i] + buf[i + 1]) / 2);
-  }
-
-  return l;
-}
-
-
-
-double secular_fun(double eigen, const Matrix&  D, const Correction & Beta)
-{
-  const double n = D.rows();
-  const auto & [p, Z] = Beta;
-
-  double res = 0.0;
-  for(int j = 0; j < n; ++j)
-  {
-    const double z = Z(j, 0);
-    res += (z * z / (D(j, j) - eigen));
-  }
-  return 1 + (p * res);
 }
 
 
