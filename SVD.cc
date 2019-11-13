@@ -49,7 +49,17 @@ Matrix secular_solver(const Matrix &diag, const Correction &Beta);
 
 Matrix initial_e_approx(const Matrix &diag, const Correction &Beta);
 
-double secular_fun(double eigen, const Matrix&  D, const Correction & Beta);
+
+//merge together
+double g_secular(double x, int k, const Matrix&  D, const Correction & Beta);
+
+double f_secular(double x, const Matrix&  D, const Correction & Beta);
+
+double f_prime_secular(double x, const Matrix&  D, const Correction & Beta);
+
+double split_secular_1_prime(double x, int k, const Matrix&  D, const Correction & Beta);
+
+double split_secular_2_prime(double x, int k, const Matrix&  D, const Correction & Beta);
 
 template <bool O, bool T>
 void printMatrix(const MatrixT<O,T> &A);
@@ -317,138 +327,207 @@ MatrixPair divideNConquer(Matrix &B)
   }
 }
 
-template <typename Fun>
-double
-false_position (const double epsilon, Fun&& fun, double p0, double p1) {
-  const int MAX_ITERS = 1000;
-  double q0 = fun(p0);
-  double q1 = fun(p1);
-  for (int j = 2; j <= MAX_ITERS; ++j) {
-    const double p = p1 - q1 * ((p1 - p0) / (q1 - q0)); //(p1 * q0 * 0.5 - q1 * p0) / (q0 * 0.5  - q1);
-    if(abs(p - p1) < epsilon)
-    {
-      return p;
-    }
-    double q = fun(p);
-    if (q * q1 < 0) {
-      p0 = p1;
-      q0 = q1;
-    }
-    p1 = p;
-    q1 = q;
-  }
-  return nan("");
-}
+
+/*************************************
+ *************************************
+ *************************************
+ *************************************
+ *************************************
+ *************************************
+ *************************************/
 
 
-template <typename Fun>
-double
-false_position2 (const double epsilon, Fun&& fun, double p0, double p1) {
-  const int MAX_ITERS = 10000;
-  
-  for (int j = 2; j <= MAX_ITERS; ++j) 
-  {
-    const double p = (p0 * fun(p1) * 0.5 - p1 * fun(p0)) / (fun(p1) * 0.5 - fun(p0)); 
-    if(abs(fun(p)) < epsilon)
-    {
-      return p;
-    }
-    if (fun(p) * fun(p0) < 0) {
-      p1 = p;
-    } else {
-      p0 = p;
-    }
-  }
-  std::cerr << "doesn't coverge\n";
-  return nan("");
-}
-
-Matrix secular_solver( const Matrix & D, const Correction & Beta)
+Matrix secular_solver( const Matrix & diag, const Correction & Beta)
 {
-  cout << "DIAGONAL: \n";
-  printMatrix(D);
-
-
-  const double N = D.rows();
+  const double n = diag.rows();
   const double epsilon = pow(10, -8);
   const auto & [P, Z] = Beta;
-  Matrix l = initial_e_approx(D, Beta);
-  vector<double> buf (N + 1);
-
-  for(int i = 0; i < N; ++ i)
-  {
-    buf[i] = D(i, i);
-  }
-
-  double z = (Z.transpose() * Z)(0, 0);
-  buf[N] = (*max_element(buf.begin(), buf.end()) +  (P * z));
-  sort(buf.begin(), buf.end());
-
-  buf[0] = -1.9;
-  buf[1] = 1.9;
-  buf[2] = 6.9;
-  buf[3] = 7.9;
-  buf[4] = 11.9;
-  
-
-  auto f = [&] (double p) {
-    return secular_fun(p, D, Beta);
-  };
-
-  for(int i = 0; i < N; ++i)
-  {
-    double p0 = buf[i];
-    double p1 = buf[i + 1];
-    
-    const auto result = false_position2(epsilon, f, p0, p1);
-
-    cout << "The value of root is : " << result << "\n"; 
-  }
-  return l;
-}
-
-/*
-Matrix secular_solver( const Matrix & D, const Correction & Beta)
-{
-
-  cout << "DIAGONAL: \n";
-  printMatrix(D);
-
-
-  double n = D.rows();
-  double e = pow(10, -8);
-  double sumN, sumD, total;
-  double p = Beta.first;
-  Matrix Z = Beta.second;
-
-  //setting up initial approximation for eigenvalues
-  Matrix l = initial_e_approx(D, Beta);
-
-  cout << "Initial approximations for eigenvalues:\n";
-  printMatrix(l);
+  Matrix l = initial_e_approx(diag, Beta);
 
   for(int i = 0; i < n; ++i)
   {
-    int cnt = 0;
-    do
+    if (i == n - 1)
     {
-      sumN = sumD = total = 0;
-      for(int j = 0; j < n; ++j)
+      //The case k = n is exactly the same as in 2.2.2
+    }
+    else 
+    {
+      double y = l(i, i);
+      double delta = diag(i, i) - y;
+      double delta1 = diag(i + 1, i + 1) - y;
+      double f = f_secular(y, diag, Beta);
+      double f_prime = f_prime_secular(y, diag, Beta);
+      double fs1_prime = split_secular_1_prime(y, i, diag, Beta);
+      double fs2_prime = split_secular_2_prime(y, i, diag, Beta);
+      double t = 0;
+      
+      //I would assume that it is barbaric to split the computation of a and b
+       
+      double a = ((delta + delta1) * f) - (delta * delta1 * f_prime);
+      double b = delta * delta1 * f;
+      double c = f - (delta * fs1_prime) - (delta1 * fs2_prime);
+
+      if (a > 0)
       {
-        sumN += (pow(Z(j, 0), 2) / (D(j, j) - l(i, i)));
-        sumD += -((pow(Z(j, 0), 2) / (pow((D(j, j) - l(i, i)), 2))));
+        t = (a - sqrt((a * a) - (4 * b * c))) / (2 * c); 
       }
-      total = (1 + (p * sumN)) / (p * sumD);
+      else
+      {
+        t = (2 * b) / (a + sqrt((a * a) - (4 * b * c)));
+      }
       
-      l(i, i) += total;
-      
-      cnt ++;
-    } while (std::abs(total) > e);
+      l(i, i) = t + diag(i, i);
+    }
   }
+  
+}
+
+
+Matrix initial_e_approx(const Matrix & diag, const Correction & Beta)
+{
+  int n = diag.rows();
+  const auto & [p, Z] = Beta;
+  Matrix D = Matrix::diagSort(diag);
+  Matrix l (n, n);
+
+  for(int i = 0; i < n; ++i)
+  {
+    if (i == n - 1)
+    {
+      //Issue with n + 1 in the algorithm description
+    }
+    else 
+    {
+      double midpoint = (D(i + 1, i + 1) + D(i, i)) / 2;
+      double delta = D(i + 1, i + 1) - D(i, i);
+      double c = g_secular(midpoint, i, diag, Beta);
+      double f = f_secular(midpoint, diag, Beta);
+      const double z1 = Z(i, 0);
+      const double z2 = Z(i + 1, 0);
+      double a, b, t, k;
+      
+      //I would assume that it is barbaric to split the computation of a and b
+      if ( f >= 0)
+      {
+        // t = y - D(k, k)
+        k = i;
+        a = (c * delta) + ((z1 * z1) + (z2 * z2));
+        b = (z1 * z1) * delta;
+      } 
+      else
+      {
+        // t = y - D(k + 1, k + 1)
+        k = i + 1;
+        a = -(c * delta) + ((z1 * z1) + (z2 * z2));
+        b = -(z1 * z1) * delta;
+      }
+
+      if (a > 0)
+      {
+        t = (a - sqrt((a * a) - (4 * b * c))) / (2 * c); 
+      }
+      else
+      {
+        t = (2 * b) / (a + sqrt((a * a) - (4 * b * c)));
+      }
+      
+      l(i, i) = t + D(k, k);
+    }
+  }
+
+
   return l;
 }
-*/
 
+double g_secular(double x, int k, const Matrix&  D, const Correction & Beta)
+{
+  /*
+  Difference in interpretation: artcle does somthing like division of secular equation by p,
+  therefore, they are callig p what in my case equals 1/p
+  */
+  const double n = D.rows();
+  const auto & [p, Z] = Beta;
+
+  double res = 0.0;
+  for(int j = 0; j < n; ++j)
+  {
+    if(j != k || j != k + 1)
+    {
+      const double z = Z(j, 0);
+      res += (z * z / (D(j, j) - x));
+    }  
+  }
+  return (1 / p) + res;
+}
+
+double f_secular(double x, const Matrix&  D, const Correction & Beta)
+{
+  const double n = D.rows();
+  const auto & [p, Z] = Beta;
+
+  double res = 0.0;
+  for(int j = 0; j < n; ++j)
+  {
+      const double z = Z(j, 0);
+      res += (z * z / (D(j, j) - x));
+  }
+  return (1 / p) + res;
+}
+
+
+double f_prime_secular(double x, const Matrix&  D, const Correction & Beta)
+{
+  const double n = D.rows();
+  const auto & [p, Z] = Beta;
+
+  double res = 0.0;
+  for(int j = 0; j < n; ++j)
+  {
+      const double z = Z(j, 0);
+      const double r = (D(j, j) - x);
+      res += -(z * z / r * r);
+  }
+  return (1 / p) + res;
+}
+
+//0 ... k
+double split_secular_1_prime(double x, int k, const Matrix&  D, const Correction & Beta)
+{
+  const auto & [p, Z] = Beta;
+
+  double res = 0.0;
+  for(int j = 0; j < k; ++j)
+  {
+      const double z = Z(j, 0);
+      const double r = (D(j, j) - x);
+      res += -(z * z / r * r);
+  }
+  return (1 / p) + res;
+}
+
+//k + 1 ... n
+double split_secular_2_prime(double x, int k, const Matrix&  D, const Correction & Beta)
+{
+  const double n = D.rows();
+  const auto & [p, Z] = Beta;
+
+  double res = 0.0;
+  for(int j = k + 1; j < n; ++j)
+  {
+      const double z = Z(j, 0);
+      const double r = (D(j, j) - x);
+      res += -(z * z / r * r);
+  }
+  return (1 / p) + res;
+}
+
+/*************************************
+ *************************************
+ *************************************
+ *************************************
+ *************************************
+ *************************************
+ *************************************/
 
 /*
 block_diagonal - routine that makes the original matrix, taken in by reference, 
@@ -472,51 +551,6 @@ block_diagonal(Matrix &B)
   B(m - 1, m - 1) -= beta_value;
 
   return std::make_pair(beta_value, Beta);
-}
-
-
-Matrix initial_e_approx(const Matrix & diag, const Correction & Beta)
-{
-  int n = diag.rows();
-  double p = Beta.first;
-  Matrix Z = Beta.second;
-  vector<double> buf (n + 1);
-
-  for(int i = 0; i < n; ++ i)
-  {
-    buf[i] = diag(i, i);
-  }
-
-  double z = (Z.transpose() * Z)(0, 0);
-  double fin = (*max_element(buf.begin(), buf.end()) +  (p * z));
-  buf[n] = fin; 
-
-  sort(buf.begin(), buf.end());
-
-  Matrix l (n, n);
-
-  for(int i = 0; i < n; ++i)
-  {
-    l(i, i) = ((buf[i] + buf[i + 1]) / 2);
-  }
-
-  return l;
-}
-
-
-
-double secular_fun(double eigen, const Matrix&  D, const Correction & Beta)
-{
-  const double n = D.rows();
-  const auto & [p, Z] = Beta;
-
-  double res = 0.0;
-  for(int j = 0; j < n; ++j)
-  {
-    const double z = Z(j, 0);
-    res += (z * z / (D(j, j) - eigen));
-  }
-  return 1 + (p * res);
 }
 
 

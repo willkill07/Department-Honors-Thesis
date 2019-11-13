@@ -196,7 +196,6 @@ public:
       }
     }
     return piece;
-
   }
 
   template <bool T1, bool O1, bool T2, bool O2>
@@ -228,6 +227,27 @@ public:
     return res;
   }
 
+  template <bool T1, bool O1>
+  default_type diagSort(const MatrixT<T1, O1> &diag)
+  {
+    int n = diag.rows();
+    Matrix D (n, n);
+    vector<double> buf (n);
+    
+    for(int i = 0; i < n; ++ i)
+    {
+      buf[i] = diag(i, i);
+    }
+
+    sort(buf.begin(), buf.end());
+
+    for(int i = 0; i < n; ++i)
+    {
+      D(i, i) = buf[i];
+    }
+
+    return D;
+  }
 
   static default_type identity(const int size) {
 
