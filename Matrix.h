@@ -1,7 +1,7 @@
 #ifndef MATRIX_H_
 #define MATRIX_H_
 
-
+#include <vector>
 #include <algorithm>
 #include <utility>
 #include <type_traits>
@@ -228,18 +228,18 @@ public:
   }
 
   template <bool T1, bool O1>
-  default_type diagSort(const MatrixT<T1, O1> &diag)
+  static default_type diagSort(const MatrixT<T1, O1> &diag)
   {
     int n = diag.rows();
-    Matrix D (n, n);
-    vector<double> buf (n);
+    default_type D (n, n);
+    std::vector<double> buf (n);
     
     for(int i = 0; i < n; ++ i)
     {
       buf[i] = diag(i, i);
     }
 
-    sort(buf.begin(), buf.end());
+    std::sort(buf.begin(), buf.end());
 
     for(int i = 0; i < n; ++i)
     {
