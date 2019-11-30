@@ -51,11 +51,14 @@ Matrix initial_e_approx(const Matrix &diag, const Correction &Beta);
 
 
 //merge together
-double g_secular(double x, int k, const Matrix&  D, const Correction & Beta);
 
 double f_secular(double x, const Matrix&  D, const Correction & Beta);
 
 double f_prime_secular(double x, const Matrix&  D, const Correction & Beta);
+
+double g_secular(double x, int k, const Matrix&  D, const Correction & Beta);
+
+double h_secular(double x, int k, const Matrix&  D, const Correction & Beta);
 
 double split_secular_1_prime(double x, int k, const Matrix&  D, const Correction & Beta);
 
@@ -254,9 +257,6 @@ void tridiagonalizer(Matrix &B) {
 }
 
 
-
-
-
 /*
 Divide - initial step of Cuppen's Divide and Conquer Eigenvalue Extraction algorithm.
 /////////////////////////////////UNDER CONSTRUCTION/////////////////////////////////
@@ -349,25 +349,51 @@ Matrix secular_solver( const Matrix & diag, const Correction & Beta)
     if (i == n - 1)
     {
       //The case k = n is exactly the same as in 2.2.2
+      const double z = Z(i, 0);
+      const double y = l(i, i);
+      const double delta = diag(i, i) - y;
+      const double delta0 = diag(i - 1, i - 1) - y;
+      const double f = f_secular(y, diag, Beta);
+      const double f_prime = f_prime_secular(y, diag, Beta);
+      const double fs1_prime = split_secular_1_prime(y, i - 1, diag, Beta);
+      const double fs2_prime = split_secular_2_prime(y, i - 1, diag, Beta);
+      double t = 0;
+
+      const double a = ((delta + delta0) * f) - (delta * delta0 * f_prime);
+      const double b = delta * delta0 * f;
+      const double c = f - (delta0 * fs1_prime) - ((z * z) / delta);
+
+      if (a >= 0)
+      {
+        t = (a - sqrt((a * a) - (4 * b * c))) / (2 * c); 
+      }
+      else
+      {
+        t = (2 * b) / (a + sqrt((a * a) - (4 * b * c)));
+      }
+      
+      l(i, i) = t + diag(i, i);
+
+
     }
     else 
     {
-      double y = l(i, i);
-      double delta = diag(i, i) - y;
-      double delta1 = diag(i + 1, i + 1) - y;
-      double f = f_secular(y, diag, Beta);
-      double f_prime = f_prime_secular(y, diag, Beta);
-      double fs1_prime = split_secular_1_prime(y, i, diag, Beta);
-      double fs2_prime = split_secular_2_prime(y, i, diag, Beta);
+      const double y = l(i, i);
+      const double delta = diag(i, i) - y;
+      const double delta1 = diag(i + 1, i + 1) - y;
+      const double f = f_secular(y, diag, Beta);
+      const double f_prime = f_prime_secular(y, diag, Beta);
+      const double fs1_prime = split_secular_1_prime(y, i, diag, Beta);
+      const double fs2_prime = split_secular_2_prime(y, i, diag, Beta);
       double t = 0;
       
       //I would assume that it is barbaric to split the computation of a and b
        
-      double a = ((delta + delta1) * f) - (delta * delta1 * f_prime);
-      double b = delta * delta1 * f;
-      double c = f - (delta * fs1_prime) - (delta1 * fs2_prime);
+      const double a = ((delta + delta1) * f) - (delta * delta1 * f_prime);
+      const double b = delta * delta1 * f;
+      const double c = f - (delta * fs1_prime) - (delta1 * fs2_prime);
 
-      if (a > 0)
+      if (a <= 0)
       {
         t = (a - sqrt((a * a) - (4 * b * c))) / (2 * c); 
       }
@@ -394,14 +420,48 @@ Matrix initial_e_approx(const Matrix & diag, const Correction & Beta)
   {
     if (i == n - 1)
     {
-      //Issue with n + 1 in the algorithm description
+      //d[n + 1] = d[n] + zTz/p
+      const double dz = (Z.transpose()*Z)(0, 0) / p;
+      const double Dnext = D(i, i) + dz;
+      const double midpoint = (Dnext + D(i, i)) / 2;
+      const double c = g_secular(midpoint, i, diag, Beta);
+      const double f = f_secular(midpoint, diag, Beta);
+      const double h = h_secular(Dnext, i, diag, Beta);
+      const double z1 = Z(i, 0);
+      const double z2 = Z(i - 1, 0);
+      double a, b, t, k;
+
+      /*
+      The "shortcut condition" only holds for whenever f <= 0 and c <= -h
+      Other case is indifferent from the constraint on f 
+      */
+      if ((f <= 0) && (c <= -h))
+      {
+        t = dz;
+      }
+      else
+      {
+        const double delta = D(i, i) - D(i - 1, i - 1);
+        a = -(c * delta) + ((z1 * z1) + (z2 * z2));
+        b = -(z1 * z1) * delta;
+
+        if (a >= 0)
+        {
+          t = (a - sqrt((a * a) - (4 * b * c))) / (2 * c); 
+        }
+        else
+        {
+          t = (2 * b) / (a + sqrt((a * a) - (4 * b * c)));
+        }
+      } 
+
     }
     else
     {
-      double midpoint = (D(i + 1, i + 1) + D(i, i)) / 2;
-      double delta = D(i + 1, i + 1) - D(i, i);
-      double c = g_secular(midpoint, i, diag, Beta);
-      double f = f_secular(midpoint, diag, Beta);
+      const double midpoint = (D(i + 1, i + 1) + D(i, i)) / 2;
+      const double delta = D(i + 1, i + 1) - D(i, i);
+      const double c = g_secular(midpoint, i, diag, Beta);
+      const double f = f_secular(midpoint, diag, Beta);
       const double z1 = Z(i, 0);
       const double z2 = Z(i + 1, 0);
       double a, b, t, k;
@@ -422,7 +482,7 @@ Matrix initial_e_approx(const Matrix & diag, const Correction & Beta)
         b = -(z1 * z1) * delta;
       }
 
-      if (a > 0)
+      if (a <= 0)
       {
         t = (a - sqrt((a * a) - (4 * b * c))) / (2 * c); 
       }
@@ -474,7 +534,17 @@ double f_secular(double x, const Matrix&  D, const Correction & Beta)
   return (1 / p) + res;
 }
 
+double h_secular(double x, int k, const Matrix&  D, const Correction & Beta)
+{
+  const auto & [p, Z] = Beta;
+  const double z1 = Z(k, 0);
+  const double z2 = Z(k + 1, 0);
+  return ((z1 * z1) / (D(k, k) - x)) + ((z2 * z2) / (D(k + 1, k + 1) - x));
+}
 
+
+
+//Used in actual computation
 double f_prime_secular(double x, const Matrix&  D, const Correction & Beta)
 {
   const double n = D.rows();
