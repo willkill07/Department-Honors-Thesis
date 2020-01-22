@@ -1,17 +1,19 @@
+/*
+Matrix.h - header file, containing the Matrix structure, used in the SVD.cc file.
+*/
+
+
 #ifndef MATRIX_H_
 #define MATRIX_H_
 
+/************************************************************/
+// System includes
 #include <vector>
 #include <algorithm>
 #include <utility>
 #include <type_traits>
 #include <stdexcept>
-/*
-Header file, containing the matix struct.
-*/
 
-/************************************************************/
-// System includes
 
 template <bool Transpose = false, bool Owning = true> struct MatrixT {
 private:
@@ -174,6 +176,11 @@ public:
     return *this;
   }
 
+  /*
+  cut - intended to cut a block diagonal matrix into the upper and the lower matrix
+  Is used in DnC algorithm.
+  */
+
   default_type cut(int stitch, bool upper) const {
     int originRows = 0;
     int originCols = 0;
@@ -197,6 +204,11 @@ public:
     }
     return piece;
   }
+
+  /*
+  combine - combines two separate matrices, designated as "hi" and "lo" into one
+  block diagonal matrix. Is used in DnC algorithm.
+  */
 
   template <bool T1, bool O1, bool T2, bool O2>
   static default_type combine(const MatrixT<T1, O1> &hi, const MatrixT<T2, O2> &lo) {
@@ -227,6 +239,10 @@ public:
     return res;
   }
 
+  /*
+  diagSort - sorts the Matrice's main diagonal in an ascending order.
+  Is used in the Secular Equation solver routine
+  */
   template <bool T1, bool O1>
   static default_type diagSort(const MatrixT<T1, O1> &diag)
   {
@@ -249,6 +265,9 @@ public:
     return D;
   }
 
+  /*
+  identity - returns an identity matrix of a given size.
+  */
   static default_type identity(const int size) {
 
     default_type result {size, size};
@@ -261,6 +280,10 @@ public:
   }
 };
 
+
+/*
+Below - Matrix multiplication and addition definitions.
+*/
 using Matrix = MatrixT<>;
 
 template <bool T1, bool T2, bool O1, bool O2>

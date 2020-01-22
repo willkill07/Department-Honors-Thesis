@@ -2,7 +2,27 @@
   Author     : Maksim Y. Melnichenko
   Title      : SVD Inplementation
 
-  Project history and additional details are avaliable upon request.
+  The following project is intended to design an implementation 
+  Singular Value Decomposition (Ref.4) feature extraction algorithm. SVD is a special technique of real matrix factorization, 
+  which, unlike Eigen decomposition, could be applied to rectangular matrices, extracting special “singular values.” SVD, 
+  whenever discussed in an applied sense, could be discussed in a number of different ways. Considering the properties of matrices 
+  that are being produced after the application of SVD, I would define the essence of SVD method as such: it is a method that allows 
+  us to identify and order dimensions, along which data points exhibit the most variation. Once we assess this info, we may 
+  identify the best approximation for the original data points using fewer dimensions. 
+  Therefore, SVD provides a method for data reduction. 
+
+  The routines, provided so far, represent the necessary steps for the initial USV^T-factorization of the original matrix.
+  Be advised that this is a work in progress. 
+  All algorithms are first being overviewed on paper and are then represented as C++ code. 
+  The routines are designed with hope for future optimization and parallelization.
+
+  References:
+  1 - Numerical Analysis (Richard L Burden; J Douglas Faires; Annette M Burden) ISBN-13: 978-1305253667
+  2 - J. J. M. Cuppen, A divide and conquer method for the symmetric tridiagonal eigenproblem, Numer. Math., 36 (1981), pp. 177–195. 
+  3 - http://www.netlib.org/lapack/lawnspdf/lawn89.pdf
+  4 - https://en.wikipedia.org/wiki/Singular_value_decomposition
+  
+
 /************************************************************/
 // System includes
 
@@ -37,11 +57,11 @@ using MatrixPair = std::pair<Matrix, Matrix>;
 /************************************************************/
 // Function prototypes/global vars/typedefs
 
-void build(Matrix &A);
+void populate_matrix(Matrix &A);
 
 void tridiagonalizer(Matrix &B);
 
-MatrixPair divideNConquer(Matrix &B);
+MatrixPair dNc_cuppen(Matrix &B);
 
 Correction block_diagonal(Matrix &B);
 
@@ -50,7 +70,7 @@ Matrix secular_solver(const Matrix &diag, const Correction &Beta);
 Matrix initial_e_approx(const Matrix &diag, const Correction &Beta);
 
 
-//merge together
+//potentially merge together
 
 double f_secular(double x, const Matrix&  D, const Correction & Beta);
 
@@ -65,37 +85,44 @@ double split_secular_1_prime(double x, int k, const Matrix&  D, const Correction
 double split_secular_2_prime(double x, int k, const Matrix&  D, const Correction & Beta);
 
 template <bool O, bool T>
-void printMatrix(const MatrixT<O,T> &A);
+void print_matrix(const MatrixT<O,T> &A);
 
 /************************************************************/
-// Main function
+/*
+ Main Function - At this stage, is populated with the testing code and matrix examples to be tested.
+ In order to observe the testing results, one shall use the print_matrix function.
+ */ 
 
 int main(int argc, char *argv[]) {
 
-  // int r = 2;
-  // int c = 4;
+  /*
+  //
+  Building an initial Matrix and populating it with randomly-generated values.
+  For convenience, we may rotate #rows and colms in the matrix, as the expression
+  (A^T) * A == A * (A^T) holds.
+  //
 
-  // if ( r < c)
-  //{
-  //    int i = r;
-  //    r = c;
-  //    c = i;
-  //}
-  // Since (A^T) * A == A * (A^T)
+  int r = 10;
+  int c = 15;
 
-  // Matrix A (r, c);
+  if (r < c)
+  {
+    int i = r;
+    r = c;
+    c = i;
+  }
 
-  // build(A);
-  // Initial Matrix
-  // printMatrix(A);
+  Matrix A (r, c);
+  populate_matrix(A);
+  auto B = A * A.transpose();
 
-  // auto B = A * A.transpose();
-
-  // Building a numerical example
+  //
+  During the testing phases of the project, the manually-typed example matrices were being used.
+  Such matrix, initially present in an example from (Ref.1 page 606), may be viewed below.
+  //
 
   Matrix TEST(4, 4);
 
-  /*
   TEST(0, 0) = 4;
   TEST(0, 1) = 1;
   TEST(0, 2) = -2;
@@ -115,89 +142,21 @@ int main(int argc, char *argv[]) {
   TEST(3, 1) = 1;
   TEST(3, 2) = -2;
   TEST(3, 3) = -1;
-  */
-  // A * (A ^ T)
-
-  TEST(0, 0) = 7;
-  TEST(0, 1) = 3;
-  TEST(0, 2) = 0;
-  TEST(0, 3) = 0;
-
-  TEST(1, 0) = 3;
-  TEST(1, 1) = 1;
-  TEST(1, 2) = 2;
-  TEST(1, 3) = 0;
-
-  TEST(2, 0) = 0;
-  TEST(2, 1) = 2;
-  TEST(2, 2) = 8;
-  TEST(2, 3) = -2;
-
-  TEST(3, 0) = 0;
-  TEST(3, 1) = 0;
-  TEST(3, 2) = -2;
-  TEST(3, 3) = 3;
   
-  //tridiagonalizer(TEST);
 
-  /*TEST DNC - 1
-  Matrix l (2, 2);
-  l(0, 0) = 1;
-  l(0, 1) = 3;
-  l(1, 0) = 3;
-  l(1, 1) = 2;
-  
-  */
 
-  
-  printMatrix(TEST);
+  tridiagonalizer(TEST);
   auto [ortho, eigenvalues] = divideNConquer(TEST);
-  printMatrix(eigenvalues);
-  /*
-  //TEST 2 - Secular Solver
-  
-  Matrix l (4, 4);
-  l(0, 0) = 1;
-  l(1, 1) = 3;
-  l(2, 2) = 5;
-  l(3, 3) = 7;
-
-  Matrix c (4, 1);
-  c(0, 0) = 0.5;
-  c(1, 0) = 0.7;
-  c(2, 0) = 0.4;
-  c(3, 0) = 0.2;
-
-  Correction Beta = std::make_pair(6, c);
-
-  secular_solver(l, Beta);
-  
-/*
-// TEST 3 - Secular Solver
-
- Matrix l (2, 2);
-  l(0, 0) = 1;
-  l(1, 1) = 2;
-  
-
-  Matrix c (2, 1);
-  c(0, 0) = 3;
-  c(1, 0) = 4;
-
-  Correction Beta = std::make_pair(6, c);
-
-  secular_solver(l, Beta);
   */
-
 
 }
 
 
 /*
-Build - by reference, modifies the original matrix. Assignes a random
-floating point number to each of its cells.
+populate_matrix - by reference, takes in the orignal matrix 
+and populates it by assigning a random floating point number to each of its cells.
 */
-void build(Matrix &A) {
+void populate_matrix(Matrix &A) {
   
   static std::minstd_rand rng{9999};
   static std::uniform_real_distribution<double> dist(-10.0, 10.0);
@@ -213,25 +172,24 @@ void build(Matrix &A) {
 
 
 /*
-Tridiagonalizer - Implementation of Householder's method of turning a
-symmetric matrix into a symmetric tridiagonal one. Modifies the original by refernce,
+Tridiagonalizer - Implementation of Householder's method (Ref. 1 page 602) of turning a
+symmetric matrix into a symmetric tridiagonal matrix. Modifies the original by refernce,
 uses a helper routine for the similarity transformation matrix production.
 */
 
 
 void tridiagonalizer(Matrix &B) {
-  // producing a column vector, replicating the last column of B
 
+  // producing a column vector, replicating the last column of B
   double alpha, RSQ;
   const int n = B.rows();
   
   for (int k = 0; k < n - 2; ++k) {
 
     alpha = RSQ = 0;
-
     Matrix W(B.rows(), 1);
-    // for k = 0 ...  < n-2
 
+    // for k = 0 ...  < n-2
     for (int i = k + 1; i < n; ++i) 
     {
       alpha += std::pow(B(i, k), 2);
@@ -247,7 +205,6 @@ void tridiagonalizer(Matrix &B) {
     //leading entry in w-vector
     W(k + 1, 0) = (0.5) * (leadingVal - alpha); 
 
-    //producting a similarity transformation
     auto WTW = W * W.transpose(); 
     WTW = Matrix::identity(n) + ((-4 / RSQ) * WTW);
     //transforming the original matrix
@@ -258,10 +215,16 @@ void tridiagonalizer(Matrix &B) {
 
 
 /*
-Divide - initial step of Cuppen's Divide and Conquer Eigenvalue Extraction algorithm.
-/////////////////////////////////UNDER CONSTRUCTION/////////////////////////////////
+dNc_cuppen - Cuppen's Divide and Conquer eigenvalue extraction algorithm (Ref. 2) - a recursive
+algorithm, consisting of two parts. The main intention of the "Divide" portion
+is to formulate a secular equation, represented by finite series, 
+the roots of which will provide the eigenvalues of the original matrix.
+The "Conquer" protion involves solving the secular equation.
+So far, the smallest undividible has been set to be represented by a 2x2 matrix, which means that
+the algorithm will only provide correct results for even-dimensional matrices. This problem will
+be updated, as the appropriate solution technique for the seqular equation will be derived.
 */
-MatrixPair divideNConquer(Matrix &B)
+MatrixPair dNc_cuppen(Matrix &B)
 {
   int n = B.rows();
 
@@ -300,8 +263,8 @@ MatrixPair divideNConquer(Matrix &B)
     Matrix hi = B.cut( n / 2, 1);
     Matrix lo = B.cut(n - (n / 2), 0);
     
-    const MatrixPair & hiNode = divideNConquer(hi);
-    const MatrixPair & loNode = divideNConquer(lo);
+    const MatrixPair & hiNode = dNc_cuppen(hi);
+    const MatrixPair & loNode = dNc_cuppen(lo);
     
 
     const auto & [o1, d1] = hiNode;
@@ -321,7 +284,7 @@ MatrixPair divideNConquer(Matrix &B)
     auto thir = ortho * sec * orthoT;
 
     cout <<"This has to be equal the original\n";
-    printMatrix(thir);
+    print_matrix(thir);
 
     return MatrixPair (ortho, secular_solver(diag, Beta));
   }
@@ -329,12 +292,19 @@ MatrixPair divideNConquer(Matrix &B)
 
 
 /*************************************
- *************************************
- *************************************
- *************************************
- *************************************
- *************************************
+ UNDER CONSTRUCTION BEGIN
  *************************************/
+
+/*
+Solving the Seqular Equation - UNDER CONSTRUCTION - several trivial root-finding 
+techniques, such as "Newton's method" and various instances of "False Posi" algorithm
+were being unsuccessfully applied to the given equation, until the appropriate techniques 
+description has been discovered. 
+The routines below are all described in (Ref. 3), the chosen solution technique is "The Middle Way."
+The logic is split into first defining the initial approximations of the eigenvalues and then slow
+convergence to the correct solution.
+In addition, several possible factors of the secular equation on the different stages of the process are present below.
+*/
 
 
 Matrix secular_solver( const Matrix & diag, const Correction & Beta)
@@ -343,6 +313,9 @@ Matrix secular_solver( const Matrix & diag, const Correction & Beta)
   const double epsilon = pow(10, -8);
   const auto & [P, Z] = Beta;
   Matrix l = initial_e_approx(diag, Beta);
+
+  cout << "Initial Approximations:\n";
+  print_matrix(l);
 
   for(int i = 0; i < n; ++i)
   {
@@ -592,17 +565,13 @@ double split_secular_2_prime(double x, int k, const Matrix&  D, const Correction
 }
 
 /*************************************
- *************************************
- *************************************
- *************************************
- *************************************
- *************************************
+ UNDER CONSTRUCTION END
  *************************************/
 
 /*
 block_diagonal - routine that makes the original matrix, taken in by reference, 
 block diagonal and additionally updates the "factored-out" matrix beta with corresponding
-elements.
+elements. Serves as a helper subroutine for Cuppen's DnC algorithm.
 */
 
 Correction
@@ -628,7 +597,7 @@ block_diagonal(Matrix &B)
 Printing - Simple routine, created for the testing purposes.
 */
 template <bool O, bool T>
-void printMatrix(const MatrixT<O,T> &A) 
+void print_matrix(const MatrixT<O,T> &A) 
 {
   for (int i = 0; i < A.rows(); ++i) 
   {
