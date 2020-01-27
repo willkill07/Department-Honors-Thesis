@@ -69,6 +69,10 @@ Matrix secular_solver(const Matrix &diag, const Correction &Beta);
 
 Matrix initial_e_approx(const Matrix &diag, const Correction &Beta);
 
+Matrix u_construction(const Matrix &eigenvalues, const Matrix &ortho, const Matrix &A);
+
+Matrix s_construction(const Matrix &eigenvalues, const Matrix &A);
+
 
 //potentially merge together
 
@@ -98,23 +102,14 @@ int main(int argc, char *argv[]) {
   /*
   //
   Building an initial Matrix and populating it with randomly-generated values.
-  For convenience, we may rotate #rows and colms in the matrix, as the expression
-  (A^T) * A == A * (A^T) holds.
   //
 
   int r = 10;
   int c = 15;
 
-  if (r < c)
-  {
-    int i = r;
-    r = c;
-    c = i;
-  }
-
   Matrix A (r, c);
   populate_matrix(A);
-  auto B = A * A.transpose();
+  auto B = A.transpose() * A;
 
   //
   During the testing phases of the project, the manually-typed example matrices were being used.
@@ -309,7 +304,7 @@ In addition, several possible factors of the secular equation on the different s
 
 Matrix secular_solver( const Matrix & diag, const Correction & Beta)
 {
-  const double n = diag.rows();
+  const int n = diag.rows();
   const double epsilon = pow(10, -8);
   const auto & [P, Z] = Beta;
   Matrix l = initial_e_approx(diag, Beta);
@@ -478,7 +473,7 @@ double g_secular(double x, int k, const Matrix&  D, const Correction & Beta)
   Difference in interpretation: artcle does somthing like division of secular equation by p,
   therefore, they are callig p what in my case equals 1/p
   */
-  const double n = D.rows();
+  const int n = D.rows();
   const auto & [p, Z] = Beta;
 
   double res = 0.0;
@@ -495,7 +490,7 @@ double g_secular(double x, int k, const Matrix&  D, const Correction & Beta)
 
 double f_secular(double x, const Matrix&  D, const Correction & Beta)
 {
-  const double n = D.rows();
+  const int n = D.rows();
   const auto & [p, Z] = Beta;
 
   double res = 0.0;
@@ -520,7 +515,7 @@ double h_secular(double x, int k, const Matrix&  D, const Correction & Beta)
 //Used in actual computation
 double f_prime_secular(double x, const Matrix&  D, const Correction & Beta)
 {
-  const double n = D.rows();
+  const int n = D.rows();
   const auto & [p, Z] = Beta;
 
   double res = 0.0;
@@ -551,7 +546,7 @@ double split_secular_1_prime(double x, int k, const Matrix&  D, const Correction
 //k + 1 ... n
 double split_secular_2_prime(double x, int k, const Matrix&  D, const Correction & Beta)
 {
-  const double n = D.rows();
+  const int n = D.rows();
   const auto & [p, Z] = Beta;
 
   double res = 0.0;
@@ -592,6 +587,48 @@ block_diagonal(Matrix &B)
   return std::make_pair(beta_value, Beta);
 }
 
+
+
+/*
+s_construction - construction a matrix of singular values with dimensions,
+identical to the original matrices'.
+Precondition: eigenvalue diagonal matrix, sorted in descending order;
+known dimensions of the original matrix.
+
+TO TURN INTO MEMEBER FUNCTION
+*/
+Matrix s_construction(const Matrix &eigenvalues, const Matrix &A)
+{
+  const int n = A.rows();
+  const int m = A.colms();
+  Matrix S (n, m);
+
+  for (int i = 0; i < n; ++i)
+  {
+    for (int j = 0; j < m; ++j)
+    {
+      double buf = eigenvalues(i, j);
+      S(i, j) = buf * buf;
+    }
+  }
+
+  return S;
+}
+
+
+/*
+The V^T matirx comes from the transposition of an orthogonal matrix.
+*/
+
+Matrix u_construction(const Matrix &eigenvalues, const Matrix &ortho, const Matrix &A)
+{
+  const int n = A.rows(); // Dimensions of ortho are 
+  const int m = A.colms();
+
+
+
+
+}
 
 /*
 Printing - Simple routine, created for the testing purposes.
