@@ -33,6 +33,7 @@ public:
   using const_pointer = const value_type*;
 
   using default_type = MatrixT<false, true>;
+  //using MatrixPair = std::pair<MatrixT, MatrixT>;
 
   iterator begin() {
     return data_;
@@ -61,6 +62,8 @@ public:
   const_iterator cend() const {
     return begin() + size();
   }
+
+
 
   double &operator()(int r, int c) {
     if constexpr (Transpose) {
@@ -115,9 +118,9 @@ public:
   template <bool Trans, bool Own,
             typename = std::enable_if_t<(Trans ^ Transpose) | (Own ^ Owning)>>
   MatrixT(MatrixT<Trans, Own> const &other)
-      : rows_(other.rows_), colms_(other.colms_), data_(other.data_) {
+      : rows_(other.rows()), colms_(other.colms()), data_(const_cast<double*>(&*other.begin())) {
     if constexpr (Owning) {
-      data_ = new double[rows_ * colms_];
+      data_ = new double[size()];
     }
     if constexpr (Transpose ^ Trans) {
       for (int r = 0; r < other.rows(); ++r) {
@@ -126,7 +129,7 @@ public:
         }
       }
     } else {
-      std::copy_n(other.data_, rows_ * colms_, data_);
+      std::copy_n(other.begin(), size(), begin());
     }
   }
 
@@ -211,7 +214,8 @@ public:
   */
 
   template <bool T1, bool O1, bool T2, bool O2>
-  static default_type combine(const MatrixT<T1, O1> &hi, const MatrixT<T2, O2> &lo) {
+  static default_type combine(const MatrixT<T1, O1> &hi, const MatrixT<T2, O2> &lo) 
+  {
 
     int a = hi.rows();
     int b = hi.colms();
@@ -239,31 +243,6 @@ public:
     return res;
   }
 
-  /*
-  diagSort - sorts the Matrice's main diagonal in an ascending order.
-  Is used in the Secular Equation solver routine
-  */
-  template <bool T1, bool O1>
-  static default_type diagSort(const MatrixT<T1, O1> &diag)
-  {
-    int n = diag.rows();
-    default_type D (n, n);
-    std::vector<double> buf (n);
-    
-    for(int i = 0; i < n; ++ i)
-    {
-      buf[i] = diag(i, i);
-    }
-
-    std::sort(buf.begin(), buf.end());
-
-    for(int i = 0; i < n; ++i)
-    {
-      D(i, i) = buf[i];
-    }
-
-    return D;
-  }
 
   /*
   identity - returns an identity matrix of a given size.
@@ -352,6 +331,146 @@ Matrix res(ar, bc);
 
   return res;
 }
+
+template <bool T1, bool T2, bool O1, bool O2>
+Matrix operator-(MatrixT<T1, O1> const &a, MatrixT<T2, O2> const &b) {
+
+  int ar = a.rows();
+  int ac = a.colms();
+  int br = b.rows();
+  int bc = b.colms();
+
+  if ((ar != br) && (ac != bc)) {
+    throw std::runtime_error("Illegal dimensions given. Please, adhere to the formal rules");
+  }
+
+
+Matrix res(ar, bc);
+
+  for (int i = 0; i < ar; ++i) {
+    for (int j = 0; j < ac; ++j) {
+        res(i, j) = a(i, j) - b(i, j);
+      }
+    }
+
+  return res;
+}
+
+
+/* UNDER CONSTRUCTION */
+
+/*
+  diagSort - sorts the Matrice's main diagonal in an ascending order.
+  Is used in the Secular Equation solver routine
+  
+  template <bool Ascending, bool T1, bool T2, bool O1, bool O2>
+  static MatrixPair sorts(const MatrixT<T1, O1> &Diag, const MatrixT<T2, O2> &Orth)
+  {
+    const int m = diag.rows();
+    Matrix D (m, m);
+    Matrix O (m, m);
+    std::vector<int> idx (m);
+    std::iota (idx.begin(), idx.end(), 0);
+    
+    sort(idx.begin(), idx.end(), [&](int i, int j))
+    {
+      if constexpr (asc)
+      {
+        return Diag(i, i) < Diag(j, j);
+      }
+      else 
+      {
+        return Diag(i, i) > Diag(j, j);
+      }
+    });
+
+    for (int i = 0; i < m; ++i)
+    {
+      const int j = v[i];
+      D (i, i) = Diag (j, j);
+      O.column_immerse(i, Orth.column_extract(j));
+    }
+
+    return MatrixPair(D, O);
+  }
+
+  template <bool T1, bool O1>
+  static double magnitude(const MatrixT<T1, O1> &vector)
+  {
+
+    const int n = D.rows();
+    const int m = D.colms();
+    const int length;
+    double magnitude;
+
+    if(!((m == 1) || (n ==1)))
+    {
+      // return exception
+    }
+
+    if (n > m)
+    {
+      for (int i = 0; i < n; ++i)
+      {
+        double cell = vector(i, m);
+        magnitude += cell * cell;
+      }
+    }
+    else
+    {
+      for (int i = 0; i < m; ++i)
+      {
+        double cell  vector(n, i);
+        magnitude += cell * cell;
+      }
+    }
+
+    magnitude = sqrt(magnitude);
+  }
+
+/*
+  template <bool T1, bool O1>
+  static Matrix column_extract(const MatrixT<T1, O1> &A, int pos) 
+  {
+
+    int n = A.rows();
+    int m = A.colms();
+
+    default_type res (n, 1);
+    
+    for(int i = 0; i < n; ++i)
+    {
+      res(i, 1) = A(i, pos);
+    }
+
+    return res;
+  }
+
+
+  //C for column, D for Destination
+  //Exception would be nice
+  template <bool T1, bool O1, bool T2, bool O2>
+  static Matrix column_immerse(const MatrixT<T1, O1> &C, const MatrixT<T1, O1> &D,  int pos) 
+  {
+
+    int n = D.rows();
+    int m = D.colms();
+    int k = C.rows();
+
+    if (m != k || pos > n)
+    {
+      //exception
+    }
+    
+    for(int i = 0; i < n; ++i)
+    {
+      D(i, pos) = A(i, 1);
+    }
+
+    return D;
+  }
+
+*/
 
 
 #endif
