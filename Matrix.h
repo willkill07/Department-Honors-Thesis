@@ -8,12 +8,14 @@ Matrix.h - header file, containing the Matrix structure, used in the SVD.cc file
 
 /************************************************************/
 // System includes
+#include <iostream>
 #include <vector>
 #include <algorithm>
 #include <utility>
 #include <type_traits>
 #include <stdexcept>
-
+#include <cmath>
+#include <numeric>
 
 template <bool Transpose = false, bool Owning = true> struct MatrixT {
 private:
@@ -31,9 +33,10 @@ public:
   using pointer = value_type*;
   using const_reference = const value_type&;
   using const_pointer = const value_type*;
+  using MatrixPair = std::pair<MatrixT, MatrixT>;
 
   using default_type = MatrixT<false, true>;
-  //using MatrixPair = std::pair<MatrixT, MatrixT>;
+  
 
   iterator begin() {
     return data_;
@@ -209,6 +212,98 @@ public:
   }
 
   /*
+  column_extract - retrieving a column from a matrix at a specified index.
+  */
+
+  default_type column_extract( int pos) 
+  {
+    int n = this->rows();
+
+    default_type res (n, 1);
+    
+    for(int i = 0; i < n; ++i)
+    {
+      res(i, 0) = (*this)(i, pos);
+      //(*this)(i, pos) = 0;
+    }
+
+    return res;
+  }
+
+  /*
+  column_immerse - placing the column at the given index.
+  */
+
+  //C for column, D for Destination
+  //Exception would be nice
+  
+  static default_type column_immerse(const MatrixT &C, MatrixT &D,  int pos) 
+  {
+
+    int n = D.rows();
+    int m = D.colms();
+    int k = C.rows();
+
+    if (m != k || pos > n)
+    {
+      //exception
+    }
+    
+    for(int i = 0; i < n; ++i)
+    {
+      D(i, pos) = C(i, 0);
+    }
+
+    return D;
+  }
+
+  /*
+  column_extract - retrieving a column from a matrix at a specified index.
+  */
+
+  default_type row_extract( int pos) 
+  {
+    int m = this->colms();
+
+    default_type res (1, m);
+    
+    for(int i = 0; i < m; ++i)
+    {
+      res(0, i) = (*this)(pos, i);
+      //(*this)(i, pos) = 0;
+    }
+
+    return res;
+  }
+
+  /*
+  column_immerse - placing the column at the given index.
+  */
+
+  //C for column, D for Destination
+  //Exception would be nice
+  
+  static default_type row_immerse(const MatrixT &R, MatrixT &D,  int pos) 
+  {
+
+    int n = D.rows();
+    int m = D.colms();
+    int k = R.colms();
+
+    if (m != k || pos > n)
+    {
+      //exception
+    }
+    
+    for(int i = 0; i < m; ++i)
+    {
+      D(pos, i) = R(0, i);
+    }
+
+    return D;
+  }
+
+  /*
   combine - combines two separate matrices, designated as "hi" and "lo" into one
   block diagonal matrix. Is used in DnC algorithm.
   */
@@ -243,6 +338,33 @@ public:
     return res;
   }
 
+  /*
+  magnitude - returns a magnitude of a specified vector;
+  We are ONLY dealing with column vectors.
+  CAN GET RID OF
+  */
+
+  
+  static double magnitude(const MatrixT &V)
+  {
+
+    const int n = V.rows();
+    const int m = V.colms();
+    double magnitude;
+
+    if(!(m == 1))
+    {
+      // return exception
+    }
+
+    for (int i = 0; i < n; ++i)
+    {
+      double cell = V(i, m);
+      magnitude += cell * cell;
+    }
+
+    return std::sqrt(magnitude);
+  }
 
   /*
   identity - returns an identity matrix of a given size.
@@ -257,6 +379,43 @@ public:
     }
     return result;
   }
+
+  /*
+  diagSort - sorts the Matrice's main diagonal in an ascending order.
+  Is used in the Secular Equation solver routine
+
+  
+  template <bool Ascending, bool T1, bool T2, bool O1, bool O2>
+  static MatrixPair sorts(const MatrixT<T1, O1> &Diag, const MatrixT<T2, O2> &Orth)
+  {
+    const int m = Diag.rows();
+    default_type D (m, m);
+    default_type O (m, m);
+    std::vector<int> idx (m);
+    std::iota (idx.begin(), idx.end(), 0);
+    
+    sort(idx.begin(), idx.end(), [&](int i, int j)
+    {
+      if constexpr (Ascending)
+      {
+        return Diag(i, i) < Diag(j, j);
+      }
+      else 
+      {
+        return Diag(i, i) > Diag(j, j);
+      }
+    });
+
+    for (int i = 0; i < m; ++i)
+    {
+      const int j = idx[i];
+      D (i, i) = Diag (j, j);
+      column_immerse( Orth.column_extract(j), O, i);
+    }
+
+    return MatrixPair(D, O);
+  }
+  */
 };
 
 
@@ -332,6 +491,8 @@ Matrix res(ar, bc);
   return res;
 }
 
+#pragma omp declare reduction (mat_add : Matrix : omp_out = omp_out + omp_in) initializer (omp_priv=omp_orig)
+
 template <bool T1, bool T2, bool O1, bool O2>
 Matrix operator-(MatrixT<T1, O1> const &a, MatrixT<T2, O2> const &b) {
 
@@ -357,120 +518,6 @@ Matrix res(ar, bc);
 }
 
 
-/* UNDER CONSTRUCTION */
-
-/*
-  diagSort - sorts the Matrice's main diagonal in an ascending order.
-  Is used in the Secular Equation solver routine
-  
-  template <bool Ascending, bool T1, bool T2, bool O1, bool O2>
-  static MatrixPair sorts(const MatrixT<T1, O1> &Diag, const MatrixT<T2, O2> &Orth)
-  {
-    const int m = diag.rows();
-    Matrix D (m, m);
-    Matrix O (m, m);
-    std::vector<int> idx (m);
-    std::iota (idx.begin(), idx.end(), 0);
-    
-    sort(idx.begin(), idx.end(), [&](int i, int j))
-    {
-      if constexpr (asc)
-      {
-        return Diag(i, i) < Diag(j, j);
-      }
-      else 
-      {
-        return Diag(i, i) > Diag(j, j);
-      }
-    });
-
-    for (int i = 0; i < m; ++i)
-    {
-      const int j = v[i];
-      D (i, i) = Diag (j, j);
-      O.column_immerse(i, Orth.column_extract(j));
-    }
-
-    return MatrixPair(D, O);
-  }
-
-  template <bool T1, bool O1>
-  static double magnitude(const MatrixT<T1, O1> &vector)
-  {
-
-    const int n = D.rows();
-    const int m = D.colms();
-    const int length;
-    double magnitude;
-
-    if(!((m == 1) || (n ==1)))
-    {
-      // return exception
-    }
-
-    if (n > m)
-    {
-      for (int i = 0; i < n; ++i)
-      {
-        double cell = vector(i, m);
-        magnitude += cell * cell;
-      }
-    }
-    else
-    {
-      for (int i = 0; i < m; ++i)
-      {
-        double cell  vector(n, i);
-        magnitude += cell * cell;
-      }
-    }
-
-    magnitude = sqrt(magnitude);
-  }
-
-/*
-  template <bool T1, bool O1>
-  static Matrix column_extract(const MatrixT<T1, O1> &A, int pos) 
-  {
-
-    int n = A.rows();
-    int m = A.colms();
-
-    default_type res (n, 1);
-    
-    for(int i = 0; i < n; ++i)
-    {
-      res(i, 1) = A(i, pos);
-    }
-
-    return res;
-  }
-
-
-  //C for column, D for Destination
-  //Exception would be nice
-  template <bool T1, bool O1, bool T2, bool O2>
-  static Matrix column_immerse(const MatrixT<T1, O1> &C, const MatrixT<T1, O1> &D,  int pos) 
-  {
-
-    int n = D.rows();
-    int m = D.colms();
-    int k = C.rows();
-
-    if (m != k || pos > n)
-    {
-      //exception
-    }
-    
-    for(int i = 0; i < n; ++i)
-    {
-      D(i, pos) = A(i, 1);
-    }
-
-    return D;
-  }
-
-*/
-
+#pragma omp declare reduction (mat_sub : Matrix : omp_out = omp_out + omp_in) initializer (omp_priv=omp_orig)
 
 #endif

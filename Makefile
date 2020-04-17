@@ -1,4 +1,4 @@
-CXXFLAGS := -g -std=c++17 -MMD
+CXXFLAGS := -O2 -std=c++17 -MMD -fopenmp
 
 SRCS := $(wildcard *.cc)
 DEPS := $(SRCS:.cc=.d)
