@@ -1,0 +1,16 @@
+[
+    {
+        "arguments": [
+            "g++",
+            "-c",
+            "-g",
+            "-std=c++17",
+            "Matrix.h",
+            "-o",
+            "SVD",
+            "SVD.cc"
+        ],
+        "directory": "/home/students/mymelnic/Thesis",
+        "file": "SVD.cc"
+    }
+]
