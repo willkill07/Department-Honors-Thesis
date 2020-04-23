@@ -82,6 +82,9 @@ Matrix u_construction(const Matrix &Init,  Matrix &Orth, const Matrix &S); //
 
 void gram_schmidt(Matrix &U, int i); //
 
+template <bool Asc, bool Row, bool T1, bool O1, bool T2, bool O2>
+MatrixPair sorts(const MatrixT<T1, O1> &Diag, MatrixT<T2, O2> &Orth);
+
 template <bool O, bool T>
 void print_matrix(const MatrixT<O,T> &A); //
 
@@ -104,9 +107,6 @@ double g_function(const Matrix& Diag, const Matrix& Z, const double rho, const d
 
 double h_function(const Matrix& Diag, const Matrix& Z, const double rho, const double y, const int k);
 
-template <bool Asc, bool Row, bool T1, bool O1, bool T2, bool O2>
-MatrixPair sorts(const MatrixT<T1, O1> &Diag, MatrixT<T2, O2> &Orth);
-
 /************************************************************/
 /*
  Main Function - At this stage, is populated with the testing code and matrix examples to be tested.
@@ -119,6 +119,7 @@ int main(int argc, char *argv[]) {
   //
   Building an initial Matrix and populating it with randomly-generated values.
   //
+  omp_set_numthreads(10);
 
   int r = 10;
   int c = 15;
@@ -316,56 +317,57 @@ int main(int argc, char *argv[]) {
 
   //TEST Eigenvector - book
 
-  Matrix TEST_Vec (5, 3);
+  Matrix TEST_Vec (4, 4);
 
   TEST_Vec(0, 0) = 1;
   TEST_Vec(0, 1) = 0;
   TEST_Vec(0, 2) = 1;
+  TEST_Vec(0, 3) = 1;
 
   TEST_Vec(1, 0) = 0;
   TEST_Vec(1, 1) = 1;
   TEST_Vec(1, 2) = 0;
+  TEST_Vec(1, 3) = 1;
 
   TEST_Vec(2, 0) = 0;
   TEST_Vec(2, 1) = 1;
   TEST_Vec(2, 2) = 1;
+  TEST_Vec(2, 3) = 1;
 
-  TEST_Vec(3, 0) = 0;
+  TEST_Vec(3, 0) = 1;
   TEST_Vec(3, 1) = 1;
-  TEST_Vec(3, 2) = 0;
-
-  TEST_Vec(4, 0) = 1;
-  TEST_Vec(4, 1) = 1;
-  TEST_Vec(4, 2) = 0;
+  TEST_Vec(3, 2) = 1;
+  TEST_Vec(3, 3) = 1;
+  //
 
   Matrix TEST_Vec_diag (3, 3);
 
-  TEST_Vec_diag(0, 0) = 5.68554;
+  TEST_Vec_diag(0, 0) = -7.56231;
   TEST_Vec_diag(0, 1) = 0;
   TEST_Vec_diag(0, 2) = 0;
 
   TEST_Vec_diag(1, 0) = 0;
-  TEST_Vec_diag(1, 1) = 3.41421;
+  TEST_Vec_diag(1, 1) = 2.00000;
   TEST_Vec_diag(1, 2) = 0;
 
   TEST_Vec_diag(2, 0) = 0;
   TEST_Vec_diag(2, 1) = 0;
-  TEST_Vec_diag(2, 2) = 1.72867;
+  TEST_Vec_diag(2, 2) = 12.56231;
+
 
   Matrix TEST_Vec_Eigen (3, 3);
 
-  TEST_Vec_Eigen(0, 0) = 5;
+  TEST_Vec_Eigen(0, 0) = -6.032;
   TEST_Vec_Eigen(0, 1) = 0;
   TEST_Vec_Eigen(0, 2) = 0;
 
   TEST_Vec_Eigen(1, 0) = 0;
-  TEST_Vec_Eigen(1, 1) = 2;
+  TEST_Vec_Eigen(1, 1) = 5.184;
   TEST_Vec_Eigen(1, 2) = 0;
 
   TEST_Vec_Eigen(2, 0) = 0;
   TEST_Vec_Eigen(2, 1) = 0;
-  TEST_Vec_Eigen(2, 2) = 1;
-
+  TEST_Vec_Eigen(2, 2) = 13.847;
 
   
   // 07/04 -tridiagonalization if fully ready
@@ -384,17 +386,13 @@ int main(int argc, char *argv[]) {
   //singular_value_decomp works
   //matrix sorts works - moved here
   //initial_e_approx - works, based on tests, given the diagonal precondition
-  
-  
-  //Matrix B = TEST_Vec * TEST_Vec.transpose();
-  //tridiagonalization(B);
-  ///auto [Z, diag] = eigen_decomp(B);
-  
-  auto [Z, diag] = eigen_decomp(TEST_L);
-  
+  //Eigenvector extraction - works
 
-  //evector_extract(TEST_Vec_Eigen, TEST_Vec_diag);
-
+  auto [Eva, Eve] = eigen_decomp(TEST_Odd);
+  
+  //singular_value_decomp(TEST_Odd, Eva, Eve);
+  
+  
 
 
 }
@@ -514,7 +512,7 @@ MatrixPair eigen_decomp(Matrix &Sym)
     const auto & [scalar, unitVector] = Cor;
 
     Matrix Z = (1 / (sqrt(2))) * (OrthT * unitVector);
-    Cor = std::make_pair( 1/(2 * scalar), Z);  // REMEMBER ABOUT RHO
+    
 
     /*
     check for the decomposition correctness
@@ -526,34 +524,32 @@ MatrixPair eigen_decomp(Matrix &Sym)
     print_matrix(thir);
     */
 
-
-
-    // Fixing order of diagonal and orthogonal entries.
-
-
-    auto[D, O] = sorts<true, true>(Diag, Z); 
-    print_matrix(D);
-    Matrix E = secular_solver(D, Cor);
-    print_matrix(E);
-
-    // Retrieving eigenvalues from secular equation.
-    //Matrix Evalue = secular_solver(Diag, Cor);
-    // Calculating eigenvectors from defined eigenvalues.
-    //Matrix Evector = evector_extract(Evalue, Diag);
-    // Fixing order of diagonal and orthogonal entries.
-    //Matrix::sorts<1>(Evalue, Evector);
     
-    return MatrixPair(Orth, Diag);
-    //return MatrixPair (Evector, Evalue);
+
+    // Fixing order of diagonal and orthogonal entries.
+    auto [D, U] = sorts<true, true>(Diag, Z); 
+    Cor = std::make_pair(1 / (2 * scalar), U);  // REMEMBER ABOUT RHO
+    
+    
+    // Retrieving eigenvalues from secular equation.
+    Matrix Eval = secular_solver(D, Cor);
+
+    // Calculating eigenvectors from defined eigenvalues.
+    Matrix Evec = evector_extract(Eval, D);
+    
+    // Fixing order of diagonal and orthogonal entries.
+    auto [Eva, Eve] = sorts<false, false>(Eval, Evec); 
+    
+    return MatrixPair(Eva, Eve);
   }
 }
 
 
 
 
-
 Matrix secular_solver(Matrix &Diag, const Correction &Cor)
 {
+  const double accuracy = std::pow(10, -5);
   const int m = Diag.rows();
   const auto & [rho, Z] = Cor;
   Matrix Y (m, m);
@@ -561,104 +557,10 @@ Matrix secular_solver(Matrix &Diag, const Correction &Cor)
   
     //defining a matrix with initial eigenvalue approximations:
     Y = initial_e_approx(Diag, Cor);
-    cout << "APPROX:\n";
-    print_matrix(Y);
 
     //finding the upper limit for eigenvalues:
-  for (int cnt = 0; cnt < 20; ++cnt)
+  while (1)
   {
-    const double d_max = Diag(m - 1, m - 1) + ((Z.transpose() * Z)(0, 0) / rho);
-
-    for (int k = 0; k < m - 1; ++k)
-    {
-      //small necessary computations
-      const double y = Y(k, k);
-      const double delta = Diag(k, k) - y;
-      const double delta_next = Diag(k + 1, k + 1) - y;
-      const double w = secular_function(Diag, Z, rho, y);
-      const double w_ = secular_function_prime(Diag, Z, rho, y);
-      const double psi = psi(Diag, Z, rho, y, k);
-      const double phi = phi(Diag, Z, rho, y, k);
-      const double psi_ = psi_prime(Diag, Z, rho, y, k);
-      const double phi_ = phi_prime(Diag, Z, rho, y, k);
-
-
-      const double a = (w * (delta + (phi / phi_))) - (delta * phi * (1 + (psi_ / phi_)));
-      const double b = delta * w * (phi / phi_);
-      const double c = pho + psi - (delta * psi_);
-
-      //saving a computation
-      const double root = std::sqrt((a * a) - (4 * b * c));
-
-      if (a <= 0)
-      {
-        //updating the approximation matrix
-        Y(k, k) += (a - root) / (2 * c);
-      }
-
-      else
-      {
-        //updating the approximation matrix
-        Y(k, k) += (2 * b) / (a + root);
-      }
-    }
-
-    //edge case k = m - 1
-    const int k = m - 1;
-    const double y = Y(m - 1, m - 1);
-    const double delta = d_max - y;
-    const double delta_prev = Diag(k, k) - y;
-    const double w = secular_function(Diag, Z, rho, y);
-    const double w_ = secular_function_prime(Diag, Z, rho, y);
-    const double psi_ = psi_prime(Diag, Z, rho, y, k);
-    const double phi_ = phi_prime(Diag, Z, rho, y, k);
-
-
-    const double a = ((delta + delta_prev) * w) - (buf * w_);
-    const double b = buf * w;
-    const double c = w - (delta_prev * psi_) - (Z(k, k) * Z(k, k) / delta);
-
-    //saving a computation
-    const double root = std::sqrt((a * a) - (4 * b * c));
-
-    if (a >= 0)
-    {
-      //updating the approximation matrix
-      Y(k, k) += (a + root) / (2 * c);
-    }
-
-    else
-    {
-      //updating the approximation matrix
-      Y(k, k) += (2 * b) / (a - root);
-    }
-
-    cout <<"Update::\n";
-    print_matrix(Y);
-  }
-
-  return Y;  
-}
-
-
-/*
-THE MIDDLE WAY
-Matrix secular_solver(Matrix &Diag, const Correction &Cor)
-{
-  const int m = Diag.rows();
-  const auto & [rho, Z] = Cor;
-  Matrix Y (m, m);
-
-  
-    //defining a matrix with initial eigenvalue approximations:
-    Y = initial_e_approx(Diag, Cor);
-    cout << "APPROX:\n";
-    print_matrix(Y);
-
-    //finding the upper limit for eigenvalues:
-  for (int cnt = 0; cnt < 20; ++cnt)
-  {
-    const double d_max = Diag(m - 1, m - 1) + ((Z.transpose() * Z)(0, 0) / rho);
 
     for (int k = 0; k < m - 1; ++k)
     {
@@ -697,40 +599,45 @@ Matrix secular_solver(Matrix &Diag, const Correction &Cor)
     //edge case k = m - 1
     const int k = m - 1;
     const double y = Y(m - 1, m - 1);
-    const double delta = d_max - y;
-    const double delta_prev = Diag(k, k) - y;
+    const double delta = Diag(k, k) - y;
+    const double delta_prev = Diag(k - 1, k - 1) - y;
     const double w = secular_function(Diag, Z, rho, y);
     const double w_ = secular_function_prime(Diag, Z, rho, y);
-    const double psi_ = psi_prime(Diag, Z, rho, y, k);
-    const double phi_ = phi_prime(Diag, Z, rho, y, k);
+    const double psi_ = psi_prime(Diag, Z, rho, y, k - 1);
 
     //saving a computation
     const double buf = delta * delta_prev;
 
     const double a = ((delta + delta_prev) * w) - (buf * w_);
     const double b = buf * w;
-    const double c = w - (delta_prev * psi_) - (Z(k, k) * Z(k, k) / delta);
+    const double c = w - (delta_prev * psi_) - (Z(k, 0) * Z(k, 0) / delta);
 
     //saving a computation
     const double root = std::sqrt((a * a) - (4 * b * c));
+    double approx = 0;
 
     if (a >= 0)
     {
       //updating the approximation matrix
-      Y(k, k) += (a + root) / (2 * c);
-      cout << "FIRST\n";
-      cout << (a + root) / (2 * c) <<"\n";
+      approx = (a + root) / (2 * c);
     }
 
     else
     {
       //updating the approximation matrix
-      Y(k, k) += (2 * b) / (a - root);
-      cout << "SECOND\n";
+      approx = (2 * b) / (a - root);
     }
-    
-    cout <<"Update::\n";
-    print_matrix(Y);
+
+    if (approx >= accuracy)
+    {
+      Y(k, k) += accuracy;
+    }
+
+    else
+    {
+      break;
+    }
+
   }
 
   return Y;  
@@ -743,35 +650,43 @@ Matrix evector_extract(const Matrix &Eig, const Matrix &Diag)
   Matrix Evec (m, m);
   Matrix Z (m, 1);
 
-  print_matrix(Z);
-
   //computing approximation to each z
   //#pragma omp parallel
   for(int i = 0; i < m; ++i)
   {
-    auto product1 = 1;
-    //#pragma omp for reduction(* : product1)
-    for (int j = 0; j < i; ++j)
+    double product1 = 1;
+    double product2 = 1;
+
+    
+
+    if(!(i == 0))
     {
-      product1 *= (Eig(j, j) - Diag(i, i)) / (Diag(j, j) - Diag(i, i));
-      cout << product1 <<"\n";
+      //#pragma omp for reduction(* : product1)
+      for (int j = 0; j < i; ++j)
+      {
+        product1 *= (Eig(j, j) - Diag(i, i)) / (Diag(j, j) - Diag(i, i)); 
+      }
     }
 
-    auto product2 = 1;
-    //#pragma omp for reduction(* : product2)
-    for (int k = i; k < m; ++k)
+    
+    
+    if(!(i == (m - 1)))
     {
-      product2 *= (Eig(k, k) - Diag(i, i)) / (Diag(k + 1, k + 1) - Diag(i, i));
-      cout << product2 <<"\n";
+      //#pragma omp for reduction(* : product2)
+      for (int k = i; k < (m - 1); ++k)
+      {
+        product2 *= (Eig(k, k) - Diag(i, i)) / (Diag(k + 1, k + 1) - Diag(i, i));
+      }
     }
 
-    auto product3 = Eig(m, m) - Diag(i, i);
+    double product3 = Eig(m - 1, m - 1) - Diag(i, i);
 
-    Z(i, 1) = std::sqrt(product1 *product2 * product3);
+    Z(i, 0) = std::sqrt(product1 *product2 * product3);
+    
   }
 
-  print_matrix(Z);
 
+  Matrix Q (m, 1);
   //computing approximation to each eigenvector
   //#pragma omp parallel
   for(int i = 0; i < m; ++i)
@@ -779,25 +694,25 @@ Matrix evector_extract(const Matrix &Eig, const Matrix &Diag)
     //#pragma omp for
     for(int j = 0; j < m; ++j)
     {
-      Z(j, 1) = Z(j, 1) / (Diag(j, j) - Eig(i, i)); 
+      Q(j, 0) = Z(j, 0) / (Diag(j, j) - Eig(i, i)); 
     }
-
-
-    auto sum = 0;
+  
+    double sum = 0;
     //#pragma omp for reduction(+ : sum)
     for(int k = 0; k < m; ++k)
     {
-      auto term = Z(k, k) / (Diag(k, k) - Eig(i, i));
+      double term = Z(k, 0) / (Diag(k, k) - Eig(i, i));
       sum += term * term;
     }
-    Z = Z * (1 / sum);
-
-    Matrix::column_immerse(Z, Evec, i);
+    
+    Q = Q * (1 / std::sqrt(sum));
+    
+    Matrix::column_immerse(Q, Evec, i);
   }
-
+  
   return Evec;
 }
-*/
+
 
 
 
@@ -805,6 +720,11 @@ MatrixTuple singular_value_decomp(const Matrix &Init, const Matrix &Eig, Matrix 
 {
   Matrix S = s_construction(Init, Eig);
   Matrix U = u_construction(Init, Orth, S);
+
+  print_matrix(U);
+  print_matrix(S);
+  print_matrix(Orth.transpose());
+
   return std::make_tuple(U, S, Orth.transpose());
 }
 
@@ -893,7 +813,7 @@ Matrix initial_e_approx(const Matrix &Diag, const Correction &Cor)
       const double z_next = Z(k + 1, 0);
 
       a = -c * delta + ((z * z) + (z_next * z_next));
-      b = -z * z * delta;
+      b = -z_next * z_next * delta;
     }
 
     //saving a computation
@@ -1097,13 +1017,17 @@ MatrixPair sorts(const MatrixT<T1, O1> &Diag, MatrixT<T2, O2> &Orth)
 }
 
 
+
+
+
+
 double secular_function(const Matrix& Diag, const Matrix& Z, const double rho, const double y)
 {
   const int m = Diag.rows();
-  double sum;
-  double z;
+  double sum = 0;
+  double z = 0;
 
-  #pragma omp parallel for reduction(+ : sum)
+  //#pragma omp parallel for reduction(+ : sum)
   for (int j = 0; j < m; ++j)
   {
     z = Z(j, 0);
@@ -1116,11 +1040,11 @@ double secular_function(const Matrix& Diag, const Matrix& Z, const double rho, c
 double secular_function_prime(const Matrix& Diag, const Matrix& Z, const double rho, const double y)
 {
   const int m = Diag.rows();
-  double sum;
-  double z;
+  double sum = 0;
+  double z = 0;
   double denom; //denominator
 
-  #pragma omp parallel for reduction(+ : sum)
+  //#pragma omp parallel for reduction(+ : sum)
   for (int j = 0; j < m; ++j)
   {
     z = Z(j, 0);
@@ -1134,27 +1058,28 @@ double secular_function_prime(const Matrix& Diag, const Matrix& Z, const double 
 
 double psi(const Matrix& Diag, const Matrix& Z, const double rho, const double y, const int k)
 {
-  double sum;
-  double z;
-  double denom; //denominator
+  double sum = 0;
+  double z = 0;
+  double denom = 0; //denominator
 
-  #pragma omp parallel for reduction(+ : sum)
+  //#pragma omp parallel for reduction(+ : sum)
   for (int j = 0; j < k; ++j)
   {
     z = Z(j, 0);
-    sum += (z * z) / ( Diag(j, j) - y;);
+    sum += (z * z) / ( Diag(j, j) - y);
   }
 
   return sum;
 }
 
 double phi(const Matrix& Diag, const Matrix& Z, const double rho, const double y, const int k)
-const int m = Diag.rows();
-  double sum;
-  double z;
-  double denom; //denominator
+{
+  const int m = Diag.rows();
+  double sum = 0;
+  double z = 0;
+  double denom = 0; //denominator
 
-  #pragma omp parallel for reduction(+ : sum)
+  //#pragma omp parallel for reduction(+ : sum)
   for (int j = k; j < m; ++j)
   {
     z = Z(j, 0);
@@ -1166,11 +1091,11 @@ const int m = Diag.rows();
 
 double psi_prime(const Matrix& Diag, const Matrix& Z, const double rho, const double y, const int k)
 {
-  double sum;
-  double z;
-  double denom; //denominator
+  double sum = 0;
+  double z = 0;
+  double denom = 0; //denominator
 
-  #pragma omp parallel for reduction(+ : sum)
+  //#pragma omp parallel for reduction(+ : sum)
   for (int j = 0; j < k; ++j)
   {
     z = Z(j, 0);
@@ -1184,11 +1109,11 @@ double psi_prime(const Matrix& Diag, const Matrix& Z, const double rho, const do
 double phi_prime(const Matrix& Diag, const Matrix& Z, const double rho, const double y, const int k)
 {
   const int m = Diag.rows();
-  double sum;
-  double z;
-  double denom; //denominator
+  double sum = 0;
+  double z = 0;
+  double denom = 0; //denominator
 
-  #pragma omp parallel for reduction(+ : sum)
+  //#pragma omp parallel for reduction(+ : sum)
   for (int j = k; j < m; ++j)
   {
     z = Z(j, 0);
@@ -1203,9 +1128,9 @@ double g_function(const Matrix& Diag, const Matrix& Z, const double rho, const d
 {
   const int m = Diag.rows();
   double sum = 0;
-  double z;
+  double z = 0;
 
-  #pragma omp parallel for reduction(+ : sum)
+  //#pragma omp parallel for reduction(+ : sum)
   for (int j = 0; j < m; ++j)
   {
     if (m != k && m != (k + 1))
