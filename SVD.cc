@@ -39,6 +39,7 @@
 
 //custom matrix header
 #include "Matrix.h"
+#include "Functions.h"
 /************************************************************/
 // Using declarations
 
@@ -65,7 +66,7 @@ Matrix secular_solver(Matrix &Diag, const Correction &Cor);
 
 Matrix evector_extract(const Matrix &Eig, const Matrix &Diag);
 
-MatrixTuple singular_value_decomp(const Matrix &Init, const Matrix &Eig, Matrix &Orth);
+MatrixTuple singular_value_decomp(const Matrix &Init);
 
 /************************************************************/
 // Helper function prototypes
@@ -155,6 +156,175 @@ int main(int argc, char *argv[]) {
   TEST_B(3, 1) = 1;
   TEST_B(3, 2) = -2;
   TEST_B(3, 3) = -1;
+
+  Matrix TEST_C(4, 4);
+
+  TEST_C(0, 0) = 6;
+  TEST_C(0, 1) = 1;
+  TEST_C(0, 2) = 0;
+  TEST_C(0, 3) = 0;
+
+  TEST_C(1, 0) = 1;
+  TEST_C(1, 1) = 4;
+  TEST_C(1, 2) = 5;
+  TEST_C(1, 3) = 0;
+
+  TEST_C(2, 0) = 0;
+  TEST_C(2, 1) = 5;
+  TEST_C(2, 2) = 2;
+  TEST_C(2, 3) = 3;
+
+  TEST_C(3, 0) = 0;
+  TEST_C(3, 1) = 0;
+  TEST_C(3, 2) = 3;
+  TEST_C(3, 3) = 7;
+
+
+  Matrix TEST_D(4, 4);
+
+  TEST_D(0, 0) = 4;
+  TEST_D(0, 1) = 1;
+  TEST_D(0, 2) = 0;
+  TEST_D(0, 3) = 0;
+
+  TEST_D(1, 0) = 1;
+  TEST_D(1, 1) = 5;
+  TEST_D(1, 2) = 4;
+  TEST_D(1, 3) = 0;
+
+  TEST_D(2, 0) = 0;
+  TEST_D(2, 1) = 4;
+  TEST_D(2, 2) = 6;
+  TEST_D(2, 3) = -2;
+
+  TEST_D(3, 0) = 0;
+  TEST_D(3, 1) = 0;
+  TEST_D(3, 2) = -2;
+  TEST_D(3, 3) = -8;
+
+  Matrix TEST_E(4, 4);
+
+  TEST_E(0, 0) = 4;
+  TEST_E(0, 1) = 2;
+  TEST_E(0, 2) = 0;
+  TEST_E(0, 3) = 0;
+
+  TEST_E(1, 0) = 2;
+  TEST_E(1, 1) = 5;
+  TEST_E(1, 2) = 2;
+  TEST_E(1, 3) = 0;
+
+  TEST_E(2, 0) = 0;
+  TEST_E(2, 1) = 2;
+  TEST_E(2, 2) = 5;
+  TEST_E(2, 3) = 2;
+
+  TEST_E(3, 0) = 0;
+  TEST_E(3, 1) = 0;
+  TEST_E(3, 2) = 2;
+  TEST_E(3, 3) = 7;
+
+  Matrix TEST_F(4, 4);
+
+  TEST_F(0, 0) = 20;
+  TEST_F(0, 1) = -18.43909;
+  TEST_F(0, 2) = 0;
+  TEST_F(0, 3) = 0;
+
+  TEST_F(1, 0) = -18.43909;
+  TEST_F(1, 1) = 41.47059;
+  TEST_F(1, 2) = -20.27957;
+  TEST_F(1, 3) = 4;
+
+  TEST_F(2, 0) = 4;
+  TEST_F(2, 1) = -20.27957;
+  TEST_F(2, 2) = 48.38693;
+  TEST_F(2, 3) = -24.88061;
+
+  TEST_F(3, 0) = 0;
+  TEST_F(3, 1) = 0;
+  TEST_F(3, 2) = -24.88061;
+  TEST_F(3, 3) = 29.14248;
+
+  Matrix TEST_B_Plus(8, 8);
+
+  TEST_B_Plus(0, 0) = 4;
+  TEST_B_Plus(0, 1) = 1;
+  TEST_B_Plus(0, 2) = -2;
+  TEST_B_Plus(0, 3) = 2;
+  TEST_B_Plus(0, 4) = 4;
+  TEST_B_Plus(0, 5) = 1;
+  TEST_B_Plus(0, 6) = -2;
+  TEST_B_Plus(0, 7) = 22;
+
+  TEST_B_Plus(1, 0) = 1;
+  TEST_B_Plus(1, 1) = 2;
+  TEST_B_Plus(1, 2) = 0;
+  TEST_B_Plus(1, 3) = -1;
+  TEST_B_Plus(1, 4) = 24;
+  TEST_B_Plus(1, 5) = -1;
+  TEST_B_Plus(1, 6) = -22;
+  TEST_B_Plus(1, 7) = 2;
+
+
+  TEST_B_Plus(2, 0) = -2;
+  TEST_B_Plus(2, 1) = 0;
+  TEST_B_Plus(2, 2) = 37;
+  TEST_B_Plus(2, 3) = -12;
+  TEST_B_Plus(2, 4) = 24;
+  TEST_B_Plus(2, 5) = 31;
+  TEST_B_Plus(2, 6) = 2;
+  TEST_B_Plus(2, 7) = 2;
+
+
+  TEST_B_Plus(3, 0) = -2;
+  TEST_B_Plus(3, 1) = -1;
+  TEST_B_Plus(3, 2) = 2;
+  TEST_B_Plus(3, 3) = 1;
+  TEST_B_Plus(3, 4) = -98;
+  TEST_B_Plus(3, 5) = 76;
+  TEST_B_Plus(3, 6) = 32;
+  TEST_B_Plus(3, 7) = 12;
+
+
+  TEST_B_Plus(4, 0) = 6;
+  TEST_B_Plus(4, 1) = 2;
+  TEST_B_Plus(4, 2) = 2;
+  TEST_B_Plus(4, 3) = 1;
+  TEST_B_Plus(4, 4) = -4;
+  TEST_B_Plus(4, 5) = 0;
+  TEST_B_Plus(4, 6) = -9;
+  TEST_B_Plus(4, 7) = -2;
+
+
+  TEST_B_Plus(5, 0) = 4;
+  TEST_B_Plus(5, 1) = 5;
+  TEST_B_Plus(5, 2) = -3;
+  TEST_B_Plus(5, 3) = 1;
+  TEST_B_Plus(5, 4) = -4;
+  TEST_B_Plus(5, 5) = -8;
+  TEST_B_Plus(5, 6) = -34;
+  TEST_B_Plus(5, 7) = 5;
+
+
+  TEST_B_Plus(6, 0) = 3;
+  TEST_B_Plus(6, 1) = -2;
+  TEST_B_Plus(6, 2) = 7;
+  TEST_B_Plus(6, 3) = 6;
+  TEST_B_Plus(6, 4) = 5;
+  TEST_B_Plus(6, 5) = -3;
+  TEST_B_Plus(6, 6) = 2;
+  TEST_B_Plus(6, 7) = 1;
+
+
+  TEST_B_Plus(7, 0) = 6;
+  TEST_B_Plus(7, 1) = 4;
+  TEST_B_Plus(7, 2) = -2;
+  TEST_B_Plus(7, 3) = 1;
+  TEST_B_Plus(7, 4) = 5;
+  TEST_B_Plus(7, 5) = 11;
+  TEST_B_Plus(7, 6) = -12;
+  TEST_B_Plus(7, 7) = 7;
 
 //TEST DNC - Odd
   Matrix TEST_Odd (3, 3);
@@ -264,110 +434,17 @@ int main(int argc, char *argv[]) {
   TEST_U_INIT(4, 1) = 1;
   TEST_U_INIT(4, 2) = 0;
   //
-  Matrix TEST_U_S (5, 3);
-
-  TEST_U_S(0, 0) = std::sqrt(5);
-  TEST_U_S(0, 1) = 0;
-  TEST_U_S(0, 2) = 0;
-
-  TEST_U_S(1, 0) = 0;
-  TEST_U_S(1, 1) = std::sqrt(2);
-  TEST_U_S(1, 2) = 0;
-
-  TEST_U_S(2, 0) = 0;
-  TEST_U_S(2, 1) = 0;
-  TEST_U_S(2, 2) = 1;
-
-  TEST_U_S(3, 0) = 0;
-  TEST_U_S(3, 1) = 0;
-  TEST_U_S(3, 2) = 0;
-
-  TEST_U_S(4, 0) = 0;
-  TEST_U_S(4, 1) = 0;
-  TEST_U_S(4, 2) = 0;
-
-  Matrix TEST_U_V (3, 3);
-
-  TEST_U_V(0, 0) = std::sqrt(6) / 6;
-  TEST_U_V(0, 1) = std::sqrt(3) / 3;
-  TEST_U_V(0, 2) = -std::sqrt(2) / 2;
-
-  TEST_U_V(1, 0) = std::sqrt(6) / 3;
-  TEST_U_V(1, 1) = -std::sqrt(3) / 3;
-  TEST_U_V(1, 2) = 0;
-
-  TEST_U_V(2, 0) = std::sqrt(6) / 6;
-  TEST_U_V(2, 1) = std::sqrt(3) / 3;
-  TEST_U_V(2, 2) = std::sqrt(2) / 2;
-
-  Matrix TEST_U_E (3, 3);
-
-  TEST_U_E(0, 0) = 5;
-  TEST_U_E(0, 1) = 0;
-  TEST_U_E(0, 2) = 0;
-
-  TEST_U_E(1, 0) = 0;
-  TEST_U_E(1, 1) = 2;
-  TEST_U_E(1, 2) = 0;
-
-  TEST_U_E(2, 0) = 0;
-  TEST_U_E(2, 1) = 0;
-  TEST_U_E(2, 2) = 1;
-
-
-  //TEST Eigenvector - book
-
-  Matrix TEST_Vec (4, 4);
-
-  TEST_Vec(0, 0) = 1;
-  TEST_Vec(0, 1) = 0;
-  TEST_Vec(0, 2) = 1;
-  TEST_Vec(0, 3) = 1;
-
-  TEST_Vec(1, 0) = 0;
-  TEST_Vec(1, 1) = 1;
-  TEST_Vec(1, 2) = 0;
-  TEST_Vec(1, 3) = 1;
-
-  TEST_Vec(2, 0) = 0;
-  TEST_Vec(2, 1) = 1;
-  TEST_Vec(2, 2) = 1;
-  TEST_Vec(2, 3) = 1;
-
-  TEST_Vec(3, 0) = 1;
-  TEST_Vec(3, 1) = 1;
-  TEST_Vec(3, 2) = 1;
-  TEST_Vec(3, 3) = 1;
-  //
-
-  Matrix TEST_Vec_diag (3, 3);
-
-  TEST_Vec_diag(0, 0) = -7.56231;
-  TEST_Vec_diag(0, 1) = 0;
-  TEST_Vec_diag(0, 2) = 0;
-
-  TEST_Vec_diag(1, 0) = 0;
-  TEST_Vec_diag(1, 1) = 2.00000;
-  TEST_Vec_diag(1, 2) = 0;
-
-  TEST_Vec_diag(2, 0) = 0;
-  TEST_Vec_diag(2, 1) = 0;
-  TEST_Vec_diag(2, 2) = 12.56231;
-
-
-  Matrix TEST_Vec_Eigen (3, 3);
-
-  TEST_Vec_Eigen(0, 0) = -6.032;
-  TEST_Vec_Eigen(0, 1) = 0;
-  TEST_Vec_Eigen(0, 2) = 0;
-
-  TEST_Vec_Eigen(1, 0) = 0;
-  TEST_Vec_Eigen(1, 1) = 5.184;
-  TEST_Vec_Eigen(1, 2) = 0;
-
-  TEST_Vec_Eigen(2, 0) = 0;
-  TEST_Vec_Eigen(2, 1) = 0;
-  TEST_Vec_Eigen(2, 2) = 13.847;
+  
+  /*
+    lambda_1 ≈ 0.816
+    lambda_2 ≈ 23.994
+    lambda_3 ≈ 80.398
+    lambda_4 ≈ 177.866
+    lambda_5 ≈ 525.760
+    lambda_6 ≈ 1779.200
+    lambda_7 ≈ 3320.923
+    lambda_8 ≈ 17303.044
+  */
 
   
   // 07/04 -tridiagonalization if fully ready
@@ -388,14 +465,35 @@ int main(int argc, char *argv[]) {
   //initial_e_approx - works, based on tests, given the diagonal precondition
   //Eigenvector extraction - works
 
-  auto [Eva, Eve] = eigen_decomp(TEST_Odd);
-  
+  Matrix A = TEST_Odd.transpose() * TEST_Odd;
+  print_matrix(A);
+  tridiagonalization(A);
+  print_matrix(A);
+  auto [Eve, Eva] = eigen_decomp(A);
+  print_matrix(Eva);
   //singular_value_decomp(TEST_Odd, Eva, Eve);
   
-  
-
-
 }
+
+
+MatrixTuple singular_value_decomp(const Matrix &Init)
+{
+
+  Matrix Sym =  Init.transpose() * Init;
+  tridiagonalization(Sym);
+  auto [Eve, Eva] = eigen_decomp(Sym);
+
+  Matrix S = s_construction(Init, Eva);
+  Matrix U = u_construction(Init, Eve, S);
+
+  print_matrix(U);
+  print_matrix(S);
+  print_matrix(Eve.transpose());
+
+  return std::make_tuple(U, S, Eve.transpose());
+}
+
+
 
 
 /*
@@ -454,7 +552,7 @@ be updated, as the appropriate solution technique for the seqular equation will 
 MatrixPair eigen_decomp(Matrix &Sym)
 {
   int n = Sym.rows();
-
+  
   if (n == 1)
   {
     Matrix Orth (n, n);
@@ -465,6 +563,7 @@ MatrixPair eigen_decomp(Matrix &Sym)
 
   else if (n == 2) 
   {
+    print_matrix(Sym);
     const double a  = Sym(0, 0);
     const double d = Sym(1, 1);
     const double c  = Sym(1, 0);
@@ -489,7 +588,9 @@ MatrixPair eigen_decomp(Matrix &Sym)
     Orth(0, 1) = 1.0 / v2m;
     Orth(1, 0) = v12 / v1m;
     Orth(1, 1) = v22 / v2m;
-    
+
+    print_matrix(Diag);
+
     return MatrixPair(Orth, Diag);
   } 
   else 
@@ -506,41 +607,44 @@ MatrixPair eigen_decomp(Matrix &Sym)
     const auto & [Orth2, Diag2] = eigen_decomp(Lo);
 
     Matrix Orth  = Matrix::combine (Orth1, Orth2);
-    auto OrthT = Orth.transpose();
     Matrix Diag   = Matrix::combine (Diag1, Diag2);
 
-    const auto & [scalar, unitVector] = Cor;
+    if (1)//(n % 2) != 0)
+    {
+      auto OrthT = Orth.transpose();
+      const auto & [scalar, unitVector] = Cor;
+      Matrix Z = (1 / (sqrt(2))) * (OrthT * unitVector);
+      
 
-    Matrix Z = (1 / (sqrt(2))) * (OrthT * unitVector);
-    
+      /*
+      check for the decomposition correctness
+      auto corr = Cor.first * ( Cor.second * Cor.second.transpose());
+      auto sec = Diag + corr;
+      auto thir = Orth * sec * OrthT;
 
-    /*
-    check for the decomposition correctness
-    auto corr = Cor.first * ( Cor.second * Cor.second.transpose());
-    auto sec = Diag + corr;
-    auto thir = Orth * sec * OrthT;
+      cout <<"This has to be equal the original\n";
+      print_matrix(thir);
+      */
 
-    cout <<"This has to be equal the original\n";
-    print_matrix(thir);
-    */
+      // Fixing order of diagonal and orthogonal entries.
+      auto [D, U] = sorts<true, true>(Diag, Z); 
+      Cor = std::make_pair(1 / (2 * scalar), U);  // REMEMBER ABOUT RHO
+      cout << "Rho: "<< 1 / (2 * scalar) <<  "\n" ;
+      cout << "Diag: \n" ;
+      print_matrix(D);
+      
+      // Retrieving eigenvalues from secular equation.
+      Matrix Eval = secular_solver(D, Cor);
+      cout << "Eigenvalues:\n";
+      print_matrix(Eval);
+      // Calculating eigenvectors from defined eigenvalues.
+      Matrix Evec = evector_extract(Eval, D);
 
-    
-
-    // Fixing order of diagonal and orthogonal entries.
-    auto [D, U] = sorts<true, true>(Diag, Z); 
-    Cor = std::make_pair(1 / (2 * scalar), U);  // REMEMBER ABOUT RHO
-    
-    
-    // Retrieving eigenvalues from secular equation.
-    Matrix Eval = secular_solver(D, Cor);
-
-    // Calculating eigenvectors from defined eigenvalues.
-    Matrix Evec = evector_extract(Eval, D);
-    
-    // Fixing order of diagonal and orthogonal entries.
-    auto [Eva, Eve] = sorts<false, false>(Eval, Evec); 
-    
-    return MatrixPair(Eva, Eve);
+      // Fixing order of diagonal and orthogonal entries.
+      auto [Eva, Eve] = sorts<false, false>(Eval, Evec); 
+      return MatrixPair(Eve, Eva);
+    }
+    return MatrixPair(Orth, Diag);
   }
 }
 
@@ -549,16 +653,18 @@ MatrixPair eigen_decomp(Matrix &Sym)
 
 Matrix secular_solver(Matrix &Diag, const Correction &Cor)
 {
-  const double accuracy = std::pow(10, -5);
+  const double accuracy = std::pow(10, -6);
   const int m = Diag.rows();
   const auto & [rho, Z] = Cor;
   Matrix Y (m, m);
 
   
-    //defining a matrix with initial eigenvalue approximations:
-    Y = initial_e_approx(Diag, Cor);
+  //defining a matrix with initial eigenvalue approximations:
+  Y = initial_e_approx(Diag, Cor);
 
-    //finding the upper limit for eigenvalues:
+  cout << "Initial: \n" ;
+  print_matrix(Y);
+  //finding the upper limit for eigenvalues:
   while (1)
   {
 
@@ -713,21 +819,6 @@ Matrix evector_extract(const Matrix &Eig, const Matrix &Diag)
   return Evec;
 }
 
-
-
-
-MatrixTuple singular_value_decomp(const Matrix &Init, const Matrix &Eig, Matrix &Orth)
-{
-  Matrix S = s_construction(Init, Eig);
-  Matrix U = u_construction(Init, Orth, S);
-
-  print_matrix(U);
-  print_matrix(S);
-  print_matrix(Orth.transpose());
-
-  return std::make_tuple(U, S, Orth.transpose());
-}
-
 /*
 populate_matrix - by reference, takes in the orignal matrix 
 and populates it by assigning a random floating point number to each of its cells.
@@ -776,10 +867,6 @@ Matrix initial_e_approx(const Matrix &Diag, const Correction &Cor)
 {
   const int m = Diag.rows();
   const auto & [rho, Z] = Cor;
- 
-  
-  //finding the upper limit for eigenvalues:
-  const double d_max = Diag(m - 1, m - 1) + ((Z.transpose() * Z)(0, 0) / rho);
   
   //Matrix of initial approximations
   Matrix Y (m, m);
@@ -801,7 +888,7 @@ Matrix initial_e_approx(const Matrix &Diag, const Correction &Cor)
       const double z = Z(k, 0);
       const double z_next = Z(k + 1, 0);
 
-      a = c * delta + ((z * z) + (z_next * z_next));
+      a = (c * delta) + ((z * z) + (z_next * z_next));
       b = z * z * delta;
     }
 
@@ -812,7 +899,7 @@ Matrix initial_e_approx(const Matrix &Diag, const Correction &Cor)
       const double z = Z(k, 0);
       const double z_next = Z(k + 1, 0);
 
-      a = -c * delta + ((z * z) + (z_next * z_next));
+      a = -(c * delta) + ((z * z) + (z_next * z_next));
       b = -z_next * z_next * delta;
     }
 
@@ -835,12 +922,14 @@ Matrix initial_e_approx(const Matrix &Diag, const Correction &Cor)
 
   //edge case k = m - 1
   const int k = m - 1;
+  //finding the upper limit for eigenvalues:
+  const double d_max = Diag(m - 1, m - 1) + ((Z.transpose() * Z)(0, 0) / rho);
   const double mid = (d_max + Diag(k, k)) / 2;
   const double g = g_function(Diag, Z, rho, mid, k);
   const double h = h_function(Diag, Z, rho, d_max, k);
   const double f = secular_function(Diag, Z, rho, mid);
 
-  if ((g <= -h) && (f <= 0))
+  if ((f <= 0) && (g <= -h))
   {
     Y(k, k) = Diag(k, k) + ((Z.transpose() * Z)(0, 0) / rho);
   }

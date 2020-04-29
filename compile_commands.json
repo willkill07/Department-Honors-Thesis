@@ -3,14 +3,18 @@
         "arguments": [
             "g++",
             "-c",
-            "-g",
+            "-O2",
             "-std=c++17",
+            "-fopenmp",
+            "-isystem",
+            "/usr/include/opencv4",
             "Matrix.h",
+            "Functions.h",
             "-o",
-            "SVD",
-            "SVD.cc"
+            "imProc",
+            "imProc.cc"
         ],
         "directory": "/home/students/mymelnic/Thesis",
-        "file": "SVD.cc"
+        "file": "imProc.cc"
     }
 ]

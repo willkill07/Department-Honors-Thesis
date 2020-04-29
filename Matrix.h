@@ -6,6 +6,14 @@ Matrix.h - header file, containing the Matrix structure, used in the SVD.cc file
 #ifndef MATRIX_H_
 #define MATRIX_H_
 
+#if !defined(SVD_MAX_OMP_THREADS)
+#define SVD_MAX_OMP_THREADS 4
+#endif
+
+#if !defined(SVD_MAX_PAR_DEPTH)
+#define SVD_MAX_PAR_DEPTH 2
+#endif
+
 /************************************************************/
 // System includes
 #include <iostream>
@@ -18,7 +26,7 @@ Matrix.h - header file, containing the Matrix structure, used in the SVD.cc file
 #include <numeric>
 
 template <bool Transpose = false, bool Owning = true> struct MatrixT {
-private:
+
   int rows_;
   int colms_;
   double *data_;
@@ -118,8 +126,8 @@ public:
 
 //
 
-  template <bool Trans, bool Own,
-            typename = std::enable_if_t<(Trans ^ Transpose) | (Own ^ Owning)>>
+  template <bool Trans, bool Own>
+           // typename = std::enable_if_t<(Trans ^ Transpose) | (Own ^ Owning)>>
   MatrixT(MatrixT<Trans, Own> const &other)
       : rows_(other.rows()), colms_(other.colms()), data_(const_cast<double*>(&*other.begin())) {
     if constexpr (Owning) {
@@ -143,22 +151,39 @@ public:
       std::copy_n(other.data_, rows_ * colms_, data_);
     }
   }
+  
 
   MatrixT(MatrixT &&other)
       : rows_(std::exchange(other.rows_, 0)),
         colms_(std::exchange(other.colms_, 0)),
         data_(std::exchange(other.data_, nullptr)) {}
 
-  template <bool Own> MatrixT &operator=(const MatrixT<Transpose, Own> &other) {
+  template <bool Trans, bool Own>
+           // typename = std::enable_if_t<(Trans ^ Transpose) | (Own ^ Owning)>>
+  MatrixT(MatrixT<Trans, Own> &&other)
+      : rows_(std::exchange(other.rows_, 0)),
+        colms_(std::exchange(other.colms_, 0)),
+        data_(std::exchange(other.data_, nullptr)) {
+  }
+
+   MatrixT &operator=(const MatrixT &other) {
     if (&other != this) {
-      MatrixT<Transpose, true> copy(other);
+      MatrixT copy(other);
       std::swap(rows_, copy.rows_);
-      std::swap(colms_, copy.cols_);
-      if constexpr (Owning) {
-        delete[] std::exchange(data_, nullptr);
-      }
+      std::swap(colms_, copy.colms_);
       std::swap(data_, copy.data_);
     }
+    return *this;
+  }
+
+  template <bool Trans, bool Own> MatrixT &operator=(const MatrixT<Trans, Own> &other) {
+    MatrixT<Transpose, true> copy(other);
+    std::swap(rows_, copy.rows_);
+    std::swap(colms_, copy.colms_);
+    if constexpr (Owning) {
+      delete[] std::exchange(data_, nullptr);
+    }
+    std::swap(data_, copy.data_);
     return *this;
   }
 
@@ -436,7 +461,7 @@ Matrix operator*(MatrixT<T1, O1> const &a, MatrixT<T2, O2> const &b) {
     throw std::runtime_error("Illegal dimensions given. Please, adhere to the formal rules");
   }
   Matrix res(ar, bc);
-
+  // TODO -- determine best loop nesting (parallel)
   for (int i = 0; i < ar; ++i) {
     for (int k = 0; k < ac; ++k) {
       for (int j = 0; j < bc; ++j) {
@@ -491,7 +516,7 @@ Matrix res(ar, bc);
   return res;
 }
 
-#pragma omp declare reduction (mat_add : Matrix : omp_out = omp_out + omp_in) initializer (omp_priv=omp_orig)
+#pragma omp declare reduction (mat_add : Matrix : omp_out = omp_out + omp_in) initializer (omp_priv = omp_orig)
 
 template <bool T1, bool T2, bool O1, bool O2>
 Matrix operator-(MatrixT<T1, O1> const &a, MatrixT<T2, O2> const &b) {
@@ -518,6 +543,9 @@ Matrix res(ar, bc);
 }
 
 
-#pragma omp declare reduction (mat_sub : Matrix : omp_out = omp_out + omp_in) initializer (omp_priv=omp_orig)
+#pragma omp declare reduction (mat_sub : MatrixT<true,true> : omp_out = omp_out + omp_in) initializer (omp_priv = omp_orig)
+#pragma omp declare reduction (mat_sub : MatrixT<true,false> : omp_out = omp_out + omp_in) initializer (omp_priv = omp_orig)
+#pragma omp declare reduction (mat_sub : MatrixT<false,false> : omp_out = omp_out + omp_in) initializer (omp_priv = omp_orig)
+#pragma omp declare reduction (mat_sub : MatrixT<false,true> : omp_out = omp_out + omp_in) initializer (omp_priv = omp_orig)
 
 #endif
