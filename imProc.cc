@@ -45,27 +45,26 @@ MatrixPair set_capture (const std::vector<cv::String> & im, unsigned dim);
 
 Matrix test_capture (const std::string & test_path, unsigned dim);
 
-Matrix orth_basis(const Matrix &A, const double cutoff);
+Matrix orth_basis(const Matrix &A, unsigned cutoff, unsigned dim);
 
 double max_threshold(const Matrix &X);
 
 void result (Matrix &X, const Matrix &Y, const double est);
 
 /************************************************************/
-int main(int argc, char *argv[]) 
+int main() 
 {
     unsigned dim = 14400; //each image in our set is 120x120 
-    const double cutoff = 0.8 * dim; //choose reduction cutoff <= 20%
+    unsigned cutoff = (unsigned) (0.8 * dim); //choose reduction cutoff <= 20%
 
     std::vector<cv::String> im; //vector of pathfiles to the set data elements
     cv::glob("./images/set*.png", im, false);
     std::string test_path = "./images/test/cheemse_test.png"; // path to the test image
-    size_t set_size = im.size();
 
     //dealing with set data
     auto [Set, Mean] = set_capture(im, dim);
     Matrix A = Set - Mean;
-    Matrix U = orth_basis(A, cutoff);
+    Matrix U = orth_basis(A, cutoff, dim);
     Matrix X = U * A; // The scalar projection of face - face_mean onto the base­faces - each column represents Xi
     const double est = max_threshold(X); 
 
@@ -82,7 +81,7 @@ void result (Matrix &X, const Matrix &Y, const double est)
 {
     unsigned set_size = X.colms();
 
-    for (int i = 0; i < set_size; ++i)
+    for (unsigned i = 0; i < set_size; ++i)
     {
         auto buf = Matrix::magnitude(Y - X.column_extract(i));
         if (buf < est)
@@ -100,9 +99,9 @@ double max_threshold(Matrix &X)
     unsigned set_size = X.colms();
     double est = 0;
 
-    for (int i = 0; i < set_size; ++i)
+    for (unsigned i = 0; i < set_size; ++i)
     {
-        for (int j = 0; j < set_size; ++j)
+        for (unsigned j = 0; j < set_size; ++j)
         {
             if (i != j)
             {
@@ -126,7 +125,7 @@ MatrixPair set_capture (const std::vector<cv::String> & im, unsigned dim)
     cv::Mat Grey;
     Matrix myGrey(dim, 1);
 
-    for (size_t i = 0; i < set_size; ++i)
+    for (unsigned i = 0; i < set_size; ++i)
     {
         cvtColor(cv::imread(im[i]), Grey, cv::COLOR_BGR2GRAY); // reading in an image and turning it into grayscale
         std::copy(Grey.begin<uchar>(), Grey.end<uchar>(), myGrey.begin());
@@ -140,7 +139,7 @@ MatrixPair set_capture (const std::vector<cv::String> & im, unsigned dim)
 
     Matrix Mean_Rect (dim, set_size); // Making a rectangular matrix of mean column vectors
 
-    for (int i = 0; i < set_size; ++ i)
+    for (unsigned i = 0; i < set_size; ++ i)
     {
         Matrix::column_immerse(Mean, Mean_Rect, i);
     }

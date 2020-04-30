@@ -375,7 +375,7 @@ public:
 
     const int n = V.rows();
     const int m = V.colms();
-    double magnitude;
+    double magnitude = 0;
 
     if(!(m == 1))
     {
