@@ -45,9 +45,9 @@ MatrixPair set_capture (const std::vector<cv::String> & im, unsigned dim);
 
 Matrix test_capture (const std::string & test_path, unsigned dim);
 
-Matrix orth_basis(const Matrix &A, unsigned cutoff, unsigned dim);
+Matrix orth_basis(const Matrix &A, const int cutoff, unsigned dim);
 
-double max_threshold(const Matrix &X);
+double max_threshold(Matrix &X);
 
 void result (Matrix &X, const Matrix &Y, const double est);
 
@@ -55,7 +55,7 @@ void result (Matrix &X, const Matrix &Y, const double est);
 int main() 
 {
     unsigned dim = 14400; //each image in our set is 120x120 
-    unsigned cutoff = (unsigned) (0.8 * dim); //choose reduction cutoff <= 20%
+    const int cutoff = (int) (0.8 * dim); //choose reduction cutoff <= 20%
 
     std::vector<cv::String> im; //vector of pathfiles to the set data elements
     cv::glob("./images/set*.png", im, false);
@@ -122,16 +122,19 @@ MatrixPair set_capture (const std::vector<cv::String> & im, unsigned dim)
     Matrix Mean (dim, 1); 
     Matrix Set (dim, set_size);
 
-    cv::Mat Grey;
-    Matrix myGrey(dim, 1);
+    cv::Mat Gray;
+    cv::Mat Binary;
+    Matrix myGray(dim, 1);
 
     for (unsigned i = 0; i < set_size; ++i)
     {
-        cvtColor(cv::imread(im[i]), Grey, cv::COLOR_BGR2GRAY); // reading in an image and turning it into grayscale
-        std::copy(Grey.begin<uchar>(), Grey.end<uchar>(), myGrey.begin());
+        cvtColor(cv::imread(im[i]), Gray, cv::COLOR_BGR2GRAY); // reading in an image and turning it into grayscale
+        // Convert image to binary
+        threshold(Gray, Binary, 50, 255, THRESH_BINARY | THRESH_OTSU);
         //Make transition form cv::Mat to Matrix and make it an (m * n) x 1 column matrix
-        Matrix::column_immerse(myGrey, Set, i);
-        Mean = Mean + myGrey;
+        std::copy(Binary.begin<uchar>(), Binary.end<uchar>(), myGray.begin());
+        Matrix::column_immerse(myGray, Set, i);
+        Mean = Mean + myGray;
     }
     
     Mean *= 1 / set_size; // computing the mean face of each matrix
@@ -149,15 +152,18 @@ MatrixPair set_capture (const std::vector<cv::String> & im, unsigned dim)
 
 Matrix test_capture (const std::string & test_path, unsigned dim)
 {
-    cv::Mat Grey;
-    Matrix myGrey(dim, 1);
-    cvtColor(cv::imread(test_path), Grey, cv::COLOR_BGR2GRAY);
-    std::copy(Grey.begin<uchar>(), Grey.end<uchar>(), myGrey.begin());
+    cv::Mat Gray;
+    cv::Mat Binary;
+    Matrix myGray(dim, 1);
+    cvtColor(cv::imread(test_path), Gray, cv::COLOR_BGR2GRAY);
+    // Convert image to binary
+    threshold(Gray, Binary, 50, 255, THRESH_BINARY | THRESH_OTSU);
     //turn Grey into normal and make it an (m * n) x 1 column matrix
-    return myGrey;
+    std::copy(Binary.begin<uchar>(), Binary.end<uchar>(), myGray.begin());
+    return myGray;
 }
 
-Matrix orth_basis(const Matrix &A, const double cutoff, unsigned dim)
+Matrix orth_basis(const Matrix &A, const int cutoff, unsigned dim)
 {
     auto [U, S, VT] = singular_value_decomp(A); // Performing an SVD on A
 
