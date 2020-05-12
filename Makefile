@@ -1,6 +1,6 @@
 CXX := clang++
 CPPFLAGS := -isystem /usr/include/opencv4
-CXXFLAGS := -O3 -march=native -std=c++17 -MMD -fopenmp -Wall -Wextra
+CXXFLAGS := -O2 -march=native -std=c++17 -MMD -fopenmp -Wall -Wextra
 LDFLAGS := -lopencv_core -lopencv_highgui -lopencv_imgproc -lopencv_imgcodecs
 
 SRCS := $(wildcard *.cc)

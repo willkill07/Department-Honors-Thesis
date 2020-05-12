@@ -1,20 +1,21 @@
 [
     {
         "arguments": [
-            "g++",
+            "clang++",
             "-c",
-            "-O2",
-            "-std=c++17",
-            "-fopenmp",
             "-isystem",
             "/usr/include/opencv4",
-            "Matrix.h",
-            "Functions.h",
+            "-O3",
+            "-march=native",
+            "-std=c++17",
+            "-fopenmp",
+            "-Wall",
+            "-Wextra",
             "-o",
-            "imProc",
-            "imProc.cc"
+            "SVD",
+            "SVD.cc"
         ],
         "directory": "/home/students/mymelnic/Thesis",
-        "file": "imProc.cc"
+        "file": "SVD.cc"
     }
 ]

@@ -419,18 +419,19 @@ Matrix operator*(MatrixT<T1, O1> const &A, MatrixT<T2, O2> const &B) {
     }
   }*/
   
-  #pragma omp parallel for 
+  #ifdef _OPENMP
+  #pragma omp parallel for collapse (2)
+  #endif
   for (int jj = 0; jj < bc; jj += blockSize) 
   {
       for (int kk = 0; kk < ac; kk += blockSize)
       {
-          for (int i = 0; i < ar; ++i) 
+          for (int i = 0; i < ar; ++i)
           {
-              #pragma omp parallel for 
               for (int j = jj; j < std::min(jj + blockSize , bc); ++j) 
               {
                   double sum = 0.0;
-                  #pragma omp parallel for num_threads(4) reduction(+ : sum)
+                  #pragma omp simd reduction(+ : sum)
                   for (int k = kk; k < std::min(kk + blockSize, ac); ++k) 
                   {
                       sum += A(i, k) * B(k, j);

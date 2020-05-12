@@ -148,7 +148,7 @@ double g_function(const MatrixT<T1, O1>& Diag, const MatrixT<T2, O2>& Z, const d
   //#pragma omp parallel for reduction(+ : sum)
   for (int j = 0; j < m; ++j)
   {
-    if (m != k && m != (k + 1))
+    if (j != k && j != (k + 1))
     {
       z = Z(j, 0);
       sum += (z * z) / (Diag(j, j) - y);
@@ -165,8 +165,6 @@ double h_function(const MatrixT<T1, O1>& Diag, const MatrixT<T2, O2>& Z, const d
   double z2 = Z(k + 1, 0);
   double sum1 = ((z1 * z1) / (Diag(k, k) - y));
   double sum2 = ((z2 * z2) / (Diag(k + 1, k + 1) - y));
-  cout << "here " << Diag(k + 1, k + 1) << "\n";
-  cout << "here " << Diag(k, k) << "\n";
 
   return sum1 + sum2;
 }
@@ -204,14 +202,15 @@ void populate_matrix(MatrixT<T, O> &A)
   }
 }
 
-template <bool Asc, bool Row, bool T1, bool O1, bool T2, bool O2>
-MatrixPair sorts(const MatrixT<T1, O1> &Diag, MatrixT<T2, O2> &Orth)
+template <bool Asc, bool Row, bool T1, bool O1, bool T2, bool O2, bool T3, bool O3>
+MatrixTuple sorts(const MatrixT<T1, O1> &Diag, MatrixT<T2, O2> &Orth1, MatrixT<T3, O3> &Orth2)
 {
   const int m = Diag.rows();
-  const int s = Orth.rows();
-  const int t = Orth.colms();
+  const int s = Orth1.rows();
+  const int t = Orth1.colms();
   Matrix D (m, m);
-  Matrix O (s, t);
+  Matrix Or1 (s, t);
+  Matrix Or2 (m, m);
   std::vector<int> idx (m);
   std::iota (idx.begin(), idx.end(), 0);
   
@@ -233,7 +232,8 @@ MatrixPair sorts(const MatrixT<T1, O1> &Diag, MatrixT<T2, O2> &Orth)
     {
       const int j = idx[i];
       D (i, i) = Diag (j, j);
-      Matrix::row_immerse( Orth.row_extract(j), O, i);
+      Matrix::row_immerse( Orth1.row_extract(j), Or1, i);
+      Matrix::column_immerse( Orth2.column_extract(j), Or2, i);
     } 
   }
   else
@@ -242,11 +242,12 @@ MatrixPair sorts(const MatrixT<T1, O1> &Diag, MatrixT<T2, O2> &Orth)
     {
       const int j = idx[i];
       D (i, i) = Diag (j, j);
-      Matrix::column_immerse( Orth.column_extract(j), O, i);
+      Matrix::column_immerse( Orth1.column_extract(j), Or1, i);
+      Matrix::column_immerse( Orth2.column_extract(j), Or2, i);
     } 
   }
 
-  return MatrixPair(D, O);
+  return MatrixTuple(D, Or1, Or2);
 }
 
 template<bool T, bool O>
@@ -300,8 +301,8 @@ Matrix s_construction(const MatrixT<T, O> &Init, const MatrixT<T, O> &Eig)
   const int m = Init.colms();
   Matrix S (n, m);
 
-  #pragma omp parallel for
-  for (int i = 0; i < n; ++i)
+  //#pragma omp parallel for
+  for (int i = 0; i < m; ++i)
   {
     S(i, i) = std::sqrt(Eig(i, i));
   }
@@ -317,14 +318,18 @@ Matrix u_construction(const MatrixT<T1, O1> &Init, MatrixT<T2, O2> &Orth, const 
 
   Matrix U (n, n);
   
-  #pragma omp parallel for
+  //parallelization works with print statement
+  //#pragma omp parallel for
   for (int i = 0; i < m; ++i)
   {
     const double s = S(i, i);
-    Matrix C = (1 / s) * Init * Orth.column_extract(i);
+    auto V = Orth.column_extract(i);
+    //print_matrix(V);
+    Matrix C = (1 / s) * Init * V;
     U = Matrix::column_immerse(C, U, i);
   }
-
+  //cout << "U\n";
+  //print_matrix(U);
   gram_schmidt(U, m);
   
   return U;
@@ -343,8 +348,12 @@ Matrix initial_e_approx(const MatrixT<T, O> &Diag, const Correction &Cor)
   {
     const double delta = Diag(k + 1, k + 1) - Diag(k, k);
     const double mid = (Diag(k + 1, k + 1) + Diag(k, k)) / 2;
-    const double w = secular_function(Diag, Z, rho, mid);
     const double c = g_function(Diag, Z, rho, mid, k);
+    const double h = h_function(Diag, Z, mid, k);
+
+    //const double w = secular_function(Diag, Z, rho, mid);
+    const double w = h + c;
+
     const double z = Z(k, 0);
     const double z_next = Z(k + 1, 0);
     double a = 0;
@@ -361,7 +370,7 @@ Matrix initial_e_approx(const MatrixT<T, O> &Diag, const Correction &Cor)
 
     else 
     {
-      K = ++k;
+      K = k + 1;
       a = -(c * delta) + ((z * z) + (z_next * z_next));
       b = -z_next * z_next * delta;
     }
@@ -388,38 +397,33 @@ Matrix initial_e_approx(const MatrixT<T, O> &Diag, const Correction &Cor)
   //finding the upper limit for eigenvalues:
   const double d_max = Diag(k, k) + ((Z.transpose() * Z)(0, 0) / rho);
   const double mid = (d_max + Diag(k, k)) / 2;
-  const double g = g_function(Diag, Z, rho, mid, k);
-  const double h = h_function(Diag, Z, d_max, k);//
-  const double w = secular_function(Diag, Z, rho, mid);
-  cout << "f: " << w << "\n";
+  const double g = g_function(Diag, Z, rho, mid, k - 1);
+  const double h = h_function(Diag, Z, d_max, k - 1);//
+  //const double w = secular_function(Diag, Z, rho, mid);
+  const double w = h + g;
   if ((w <= 0) && (g <= -h))
   {
-    cout << "FIRST\n";
     Y(k, k) = d_max;
   }
 
   else
   {
-    cout << "SECOND\n";
     const double c = g;
     const double delta = Diag(k, k) - Diag(k - 1, k - 1);
     const double z = Z(k, 0);
     const double z_prev = Z(k - 1, 0);
     const double a = -(c * delta) + ((z * z) + (z_prev * z_prev));
     const double b = -z * z * delta;
-
+    
     //saving a computation
     const double root = std::sqrt((a * a) - (4 * b * c));
-
     if (a >= 0)
     {
-      cout << "1\n";
       //Making an initial approximation y = tau + d_K
       Y(k, k) = Diag(k, k) + ((a + root) / (2 * c));
     }
     else 
     {
-      cout << "2\n";
       //Making an initial approximation y = tau + d_K
       Y(k, k) = Diag(k, k) + ((2 * b) / (a - root));
     }
@@ -468,14 +472,14 @@ void tridiagonalization(MatrixT<T, O> &Sym)
 template <bool T, bool O>
 Matrix secular_solver(const MatrixT<T, O> &Diag, const Correction &Cor)
 {
-  const double accuracy = std::pow(10, -8);
+  const double accuracy = std::pow(10, -5);
   const int m = Diag.rows();
   const auto & [rho, Z] = Cor;
 
   //defining a matrix with initial eigenvalue approximations:
   auto Y = initial_e_approx(Diag, Cor);
 
-  cout << "Initial: \n" ;
+  cout << "Initial Eigenvalue Approximation: \n" ;
   print_matrix(Y);
   //finding the upper limit for eigenvalues:
   
@@ -522,21 +526,24 @@ Matrix secular_solver(const MatrixT<T, O> &Diag, const Correction &Cor)
   {
     //edge case k = m - 1
     const int k = m - 1;
+    const double x = Y(k - 1, k - 1);
     const double y = Y(k, k);
     const double delta = Diag(k, k) - y;
     const double delta_prev = Diag(k - 1, k - 1) - y;
     const double w = secular_function(Diag, Z, rho, y);
+    const double ww = secular_function(Diag, Z, rho, x);
     const double w_ = secular_function_prime(Diag, Z, y);
     const double psi_ = psi_prime(Diag, Z, y, k - 1);
 
     //saving a computation
     const double buf = delta * delta_prev;
 
-    const double a = ((delta + delta_prev) * w) - (buf * w_);
+    const double a = ((delta + delta_prev) * ww) - (buf * w_);
     const double b = buf * w;
     const double c = w - (delta_prev * psi_) - (Z(k, 0) * Z(k, 0) / delta);
 
     //saving a computation
+    //cout << "root: " << (a * a) - (4 * b * c) <<"\n";
     const double root = std::sqrt((a * a) - (4 * b * c));
     double approx = 0;
 
@@ -552,7 +559,7 @@ Matrix secular_solver(const MatrixT<T, O> &Diag, const Correction &Cor)
       approx = (2 * b) / (a - root);
     }
 
-    if (approx >= accuracy)
+    if (approx > accuracy)
     {
       Y(k, k) += accuracy;
     }
@@ -562,6 +569,7 @@ Matrix secular_solver(const MatrixT<T, O> &Diag, const Correction &Cor)
       break;
     }
   }
+
   return Y;  
 }
 
@@ -571,65 +579,76 @@ Matrix evector_extract(const MatrixT<T1, O1> &Eig, const MatrixT<T2, O2> &Diag)
   const int m = Eig.rows();
   Matrix Evec (m, m);
   Matrix Z (m, 1);
+  Matrix Q (m, 1);
+  
 
   //computing approximation to each z
-  //#pragma omp parallel
+  //#pragma omp parallel for 
   for(int i = 0; i < m; ++i)
   {
-    double product1 = 1;
-    double product2 = 1;
+
+    double product1_num = 1;
+    double product1_denom = 1;
+    double product2_num = 1;
+    double product2_denom = 1;
+    double product3 = 1;
 
     if(!(i == 0))
     {
-      //#pragma omp for reduction(* : product1)
+      //#pragma omp for reduction(* : product1_num)
       for (int j = 0; j < i; ++j)
       {
-        product1 *= (Eig(j, j) - Diag(i, i)) / (Diag(j, j) - Diag(i, i)); 
+        product1_num *= (Eig(j, j) - Diag(i, i)); 
+        product1_denom *= (Diag(j, j) - Diag(i, i));
       }
     }
-
+    
     if(!(i == (m - 1)))
     {
       //#pragma omp for reduction(* : product2)
       for (int k = i; k < (m - 1); ++k)
       {
-        product2 *= (Eig(k, k) - Diag(i, i)) / (Diag(k + 1, k + 1) - Diag(i, i));
+        product2_num *= (Eig(k, k) - Diag(i, i));
+        product2_denom *= (Diag(k + 1, k + 1) - Diag(i, i));
       }
     }
 
-    double product3 = Eig(m - 1, m - 1) - Diag(i, i);
+    product3 = Eig(m - 1, m - 1) - Diag(i, i);
+    Z(i, 0) = std::sqrt( (product1_num / product1_denom)  * (product2_num / product2_denom) * product3);
 
-    Z(i, 0) = std::sqrt(product1 *product2 * product3);
-    
   }
+  
+  //print_matrix(Z);
+  
 
-  print_matrix(Z);
-
-
-  Matrix Q (m, 1);
   //computing approximation to each eigenvector
-  //#pragma omp parallel
+  //#pragma omp parallel for
   for(int i = 0; i < m; ++i)
   {
-    //#pragma omp for
     for(int j = 0; j < m; ++j)
     {
       Q(j, 0) = Z(j, 0) / (Diag(j, j) - Eig(i, i)); 
+      //
+      if ((j == 0) && ((m % 2) == 0))
+      {
+        Q(j, 0) = -1 * Q(j, 0);
+      }
+      //
     }
-  
-    double sum = 0;
-    //#pragma omp for reduction(+ : sum)
-    for(int k = 0; k < m; ++k)
-    {
-      double term = Z(k, 0) / (Diag(k, k) - Eig(i, i));
-      sum += term * term;
-    }
-    
-    Q = Q * (1 / std::sqrt(sum));
-    
+
+    double magnitude = std::sqrt(((Q.transpose() * Q)(0, 0)));
+    Q = Q * (1 / magnitude);
+
     Matrix::column_immerse(Q, Evec, i);
   }
   
+  cout << "EVEC: \n";
+  print_matrix(Evec);
+
+
+  cout << "Compare_eigen_decomp: \n";
+  print_matrix(Evec * Eig * Evec.transpose());
+
   return Evec;
 }
 
@@ -753,7 +772,6 @@ MatrixPair eigen_decomp(MatrixT<T, O> &Sym)
 
   else if (n == 2) 
   {
-    print_matrix(Sym);
     const double a  = Sym(0, 0);
     const double d = Sym(1, 1);
     const double c  = Sym(1, 0);
@@ -779,12 +797,13 @@ MatrixPair eigen_decomp(MatrixT<T, O> &Sym)
     Orth(1, 0) = v12 / v1m;
     Orth(1, 1) = v22 / v2m;
 
-    print_matrix(Diag);
-
     return MatrixPair(Orth, Diag);
   } 
   else 
   {
+      cout << "A: \n";
+      print_matrix(Sym);
+
     Correction Cor = block_diagonal(Sym);
     
     auto Hi = Sym.cut( n / 2, 1);
@@ -793,65 +812,66 @@ MatrixPair eigen_decomp(MatrixT<T, O> &Sym)
     const auto & [Orth1, Diag1] = eigen_decomp(Hi);
     const auto & [Orth2, Diag2] = eigen_decomp(Lo);
 
-    const auto Orth  = Matrix::combine (Orth1, Orth2); //needed solely for testing purposes
-    auto Diag   = Matrix::combine (Diag1, Diag2);
+    auto Orth = Matrix::combine (Orth1, Orth2); 
+    auto Diag = Matrix::combine (Diag1, Diag2);
 
     
     const auto OrthT = Orth.transpose();
     const auto & [scalar, unitVector] = Cor;
     auto Z = (1 / (sqrt(2))) * (OrthT * unitVector);
     double rho = 1 / (2 * scalar);
-
-
-    /*
-    //check for the decomposition correctness
-    auto corr = (1 / rho) * ( Z * Z.transpose());
-    auto sec = Diag + corr;
-    auto thir = Orth * sec * OrthT;
-
-    cout <<"This has to be equal the original\n";
-    print_matrix(thir);
-    */
     
+    cout << "This has to be equal the original\n";
+    print_matrix(Orth * (Diag + ((1 / rho) * (Z * Z.transpose()))) * Orth.transpose());
+
     if (rho < 0)
     {
+      cout << "HEYYYYYYYYYYYYYYYYYYYYY\n";
       rho = -rho;
       Z = -1 * Z;
       Diag = -1 * Diag;
 
-      auto [D, U] = sorts<true, true>(Diag, Z); 
+      auto [D, U, Or] = sorts<true, true>(Diag, Z, Orth); 
       Cor = std::make_pair(rho, U);
+
+      
       auto Eval = secular_solver(D, Cor);
+      //
+        cout << "orig_eigen_decomp: \n";
+        print_matrix(D + ( (1 / rho) * ( U * U.transpose())));
+      //
       auto Evec = evector_extract(Eval, D);
 
       Eval = -1 * Eval;
       Evec = -1 * Evec;
 
-      auto [Eva, Eve] = sorts<false, false>(Eval, Evec); 
-      return MatrixPair(Eve, Eva);
+      auto [Eva, Eve, Ort] = sorts<false, false>(Eval, Evec, Or); 
+      cout << "Eigenvalue: \n";
+      print_matrix(Eva);
+
+      //cout << "This TOO has to be equal the original\n";
+      //print_matrix((Orth * (D + ((1 / rho) * (U * U.transpose()))) * Orth.transpose()));
+      
+      return MatrixPair(Ort * Eve, Eva);
     }
     else
     {
-      auto [D, U] = sorts<true, true>(Diag, Z); 
+
+      auto [D, U, Or] = sorts<true, true>(Diag, Z, Orth); 
       Cor = std::make_pair(rho, U);
 
-      cout << "Corr: \n" ;
-      print_matrix(U);
-      cout << "Diag: \n" ;
-      print_matrix(D);
-      
-      // Retrieving eigenvalues from secular equation.
       auto Eval = secular_solver(D, Cor);
-      cout << "Eigenvalues:\n";
-      print_matrix(Eval);
-      // Calculating eigenvectors from defined eigenvalues.
+
+      //
+        cout << "orig_eigen_decomp: \n";
+        print_matrix(D + ((1 / rho) * U * U.transpose()));
+      //
+      
       auto Evec = evector_extract(Eval, D);
-      cout << "Eigenvector:\n";
-      print_matrix(Evec);
-      // Fixing order of diagonal and orthogonal entries.
-      const auto [Eva, Eve] = sorts<false, false>(Eval, Evec); 
-        
-      return MatrixPair(Eve, Eva);
+
+      auto [Eva, Eve, Ort] = sorts<false, false>(Eval, Evec, Or); 
+
+      return MatrixPair(Ort * Eve, Eva);
     }
   }
 }
@@ -859,18 +879,38 @@ MatrixPair eigen_decomp(MatrixT<T, O> &Sym)
 template <bool T, bool O>
 MatrixTuple singular_value_decomp(const MatrixT<T, O> &Init)
 {
-  auto Sym =  Init.transpose() * Init;
-  //tridiagonalization(Sym);
-  auto [Eve, Eva] = eigen_decomp(Sym);
-
+  cout << "A: \n";
+  print_matrix(Init);
+  auto Sym = Init.transpose() * Init;
+  /////
+  cout << "(A^T)*A: \n";
+  print_matrix(Sym);
+  /////
+  tridiagonalization(Sym);
+  /////
+  cout << "Tridiagonal: \n";
+  print_matrix(Sym);
+  /////
+  auto [Ort, Eva] = eigen_decomp(Sym);
+  /////
+  cout << "Eigenvalue: \n";
+  print_matrix(Eva);
+  cout << "Eigenvector: \n";
+  print_matrix(Ort);
+  /////
   auto S = s_construction(Init, Eva);
-  auto U = u_construction(Init, Eve, S);
+  auto U = u_construction(Init, Ort, S);
 
+  cout << "Matrix U: \n";
   print_matrix(U);
+  cout << "Matrix S: \n";
   print_matrix(S);
-  print_matrix(Eve.transpose());
+  cout << "Matrix V^T: \n";
+  print_matrix(Ort.transpose());
+  cout << "Re-Assembled Original: \n";
+  print_matrix(U * S * Ort.transpose());
 
-  return std::make_tuple(U, S, Eve.transpose());
+  return MatrixTuple(U, S, Ort.transpose());
 }
 
 #endif
