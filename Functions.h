@@ -32,6 +32,10 @@ using MatrixTuple = std::tuple<Matrix, Matrix, Matrix>;
 /************************************************************/
 // Small mathematical functions
 
+/*
+  secular_function - secular equation, defined as a finite series.
+  Returns the numerical result of a function, given the approximation to an eigenvalue.
+*/
 template <bool T1, bool O1, bool T2, bool O2>
 double secular_function(const MatrixT<T1, O1>& Diag, const MatrixT<T2, O2>& Z, const double rho, const double y)
 {
@@ -49,6 +53,11 @@ double secular_function(const MatrixT<T1, O1>& Diag, const MatrixT<T2, O2>& Z, c
   return rho + sum;
 }
 
+/*
+  secular_function_prime - differentiation of the previously-defined secular function 
+  with respect to the eigenvalue approximation "y".
+  Returns the numerical result of a function, given the approximation to an eigenvalue.
+*/
 template <bool T1, bool O1, bool T2, bool O2>
 double secular_function_prime(const MatrixT<T1, O1>& Diag, const MatrixT<T2, O2>& Z, const double y)
 {
@@ -68,6 +77,11 @@ double secular_function_prime(const MatrixT<T1, O1>& Diag, const MatrixT<T2, O2>
   return sum;
 }
 
+
+/*
+  psi - the first one of the functions, used to partition secular equation.
+  Returns the numerical result of a function, given the approximation to an eigenvalue.
+*/
 template <bool T1, bool O1, bool T2, bool O2>
 double psi(const MatrixT<T1, O1>& Diag, const MatrixT<T2, O2>& Z, const double y, const int k)
 {
@@ -84,6 +98,10 @@ double psi(const MatrixT<T1, O1>& Diag, const MatrixT<T2, O2>& Z, const double y
   return sum;
 }
 
+/*
+  phi - the second one of the functions, used to partition secular equation.
+  Returns the numerical result of a function, given the approximation to an eigenvalue.
+*/
 template <bool T1, bool O1, bool T2, bool O2>
 double phi(const MatrixT<T1, O1>& Diag, const MatrixT<T2, O2>& Z, const double y, const int k)
 {
@@ -101,6 +119,11 @@ double phi(const MatrixT<T1, O1>& Diag, const MatrixT<T2, O2>& Z, const double y
   return sum;
 }
 
+/*
+  psi_prime - differentiation of the previously-defined psi function 
+  with respect to the eigenvalue approximation "y".
+  Returns the numerical result of a function, given the approximation to an eigenvalue.
+*/
 template <bool T1, bool O1, bool T2, bool O2>
 double psi_prime(const MatrixT<T1, O1>& Diag, const MatrixT<T2, O2>& Z, const double y, const int k)
 {
@@ -119,6 +142,11 @@ double psi_prime(const MatrixT<T1, O1>& Diag, const MatrixT<T2, O2>& Z, const do
   return sum;
 }
 
+/*
+  phi_prime - differentiation of the previously-defined phi function 
+  with respect to the eigenvalue approximation "y".
+  Returns the numerical result of a function, given the approximation to an eigenvalue.
+*/
 template <bool T1, bool O1, bool T2, bool O2>
 double phi_prime(const MatrixT<T1, O1>& Diag, const MatrixT<T2, O2>& Z, const double y, const int k)
 {
@@ -138,6 +166,11 @@ double phi_prime(const MatrixT<T1, O1>& Diag, const MatrixT<T2, O2>& Z, const do
   return sum;
 }
 
+/*
+  g_function - the first one of two functions, used to partition the secular equation for finding 
+  initial approximations to eigenvalues.
+  Returns the numerical result of a function, given the approximation to an eigenvalue.
+*/
 template <bool T1, bool O1, bool T2, bool O2>
 double g_function(const MatrixT<T1, O1>& Diag, const MatrixT<T2, O2>& Z, const double rho, const double y, const int k)
 {
@@ -158,6 +191,11 @@ double g_function(const MatrixT<T1, O1>& Diag, const MatrixT<T2, O2>& Z, const d
   return rho + sum;
 }
 
+/*
+  h_function - the second one of two functions, used to partition the secular equation for finding 
+  initial approximations to eigenvalues.
+  Returns the numerical result of a function, given the approximation to an eigenvalue.
+*/
 template <bool T1, bool O1, bool T2, bool O2>
 double h_function(const MatrixT<T1, O1>& Diag, const MatrixT<T2, O2>& Z, const double y, const int k)
 {
@@ -202,6 +240,13 @@ void populate_matrix(MatrixT<T, O> &A)
   }
 }
 
+/*
+  sorts - intended to sort the diagonal matrix in an order, specified via boolean parameter
+  "Asc" (ascending); sorts the first orthogonal matrix accordingly, either swapping rows or
+  columns, based on boolean parameter "Row"; sorts the secod orthogonal matrix accordingly,
+  swapping rows.
+  Returns a tuple of three sorted matrices.
+*/
 template <bool Asc, bool Row, bool T1, bool O1, bool T2, bool O2, bool T3, bool O3>
 MatrixTuple sorts(const MatrixT<T1, O1> &Diag, MatrixT<T2, O2> &Orth1, MatrixT<T3, O3> &Orth2)
 {
@@ -250,6 +295,11 @@ MatrixTuple sorts(const MatrixT<T1, O1> &Diag, MatrixT<T2, O2> &Orth1, MatrixT<T
   return MatrixTuple(D, Or1, Or2);
 }
 
+/*
+  block_diagonal - "Block diagonalizes" the input symmetric tridiagonal matrix, modifying it
+  by reference. Returns the extracted "correction term" in form of a unit-column vector and 
+  a an extracted constant.
+*/
 template<bool T, bool O>
 Correction block_diagonal(MatrixT<T, O> &Sym)
 {
@@ -268,6 +318,12 @@ Correction block_diagonal(MatrixT<T, O> &Sym)
   return std::make_pair(rho, Cor);
 }
 
+/*
+  gram_schmidt - performs Gram-Schmidt process, described in
+  Numerical Analysis (Richard L Burden; J Douglas Faires; Annette M Burden) ISBN-13: 978-1305253667
+  on page 575 to fill the remaining colums of the input matrix, forming an orthogonal set.
+  Returns the updated matrix.
+*/
 template<bool T, bool O>
 void gram_schmidt(MatrixT<T, O> &U, const int i)
 {
@@ -294,6 +350,10 @@ void gram_schmidt(MatrixT<T, O> &U, const int i)
   }
 }
 
+/*
+  s_construction - given the initial matrix and a diagonal matrix of eigenvalues, constructs the "S"
+  matrix of singular values as a part of SVD.
+*/
 template<bool T, bool O>
 Matrix s_construction(const MatrixT<T, O> &Init, const MatrixT<T, O> &Eig)
 {
@@ -310,6 +370,10 @@ Matrix s_construction(const MatrixT<T, O> &Init, const MatrixT<T, O> &Eig)
   return S;
 }
 
+/*
+  u_construction - given the initial matrix, the matrix of singular values and an orthogonal matirx, constructs the "U"
+  matrix as a part of SVD.
+*/
 template<bool T1, bool O1, bool T2, bool O2, bool T3, bool O3>
 Matrix u_construction(const MatrixT<T1, O1> &Init, MatrixT<T2, O2> &Orth, const MatrixT<T3, O3> &S)
 {
@@ -335,6 +399,11 @@ Matrix u_construction(const MatrixT<T1, O1> &Init, MatrixT<T2, O2> &Orth, const 
   return U;
 }
 
+/*
+  initial_e_approx - finds "initial guesses" to the eigenvalues of a matrix of type (D + rho * Z * Z^T),
+  using a scheme described in http://www.netlib.org/lapack/lawnspdf/lawn89.pdf
+  Returns the diagonal matrix of such approximations.
+*/
 template<bool T, bool O>
 Matrix initial_e_approx(const MatrixT<T, O> &Diag, const Correction &Cor)
 {
@@ -434,6 +503,12 @@ Matrix initial_e_approx(const MatrixT<T, O> &Diag, const Correction &Cor)
 /************************************************************/
 // Major function prototypes
 
+/*
+  tridiagonalization - peforms "Householder's Transformation," described in 
+  Numerical Analysis (Richard L Burden; J Douglas Faires; Annette M Burden) ISBN-13: 978-1305253667,
+  section 9.4.
+  Returns the symmetric, tridiagonal version of original matrix.
+*/
 template <bool T, bool O>
 void tridiagonalization(MatrixT<T, O> &Sym)
 {
@@ -469,6 +544,11 @@ void tridiagonalization(MatrixT<T, O> &Sym)
   }
 }
 
+/*
+  secular_solver - utilizes "The Middle Way" technique for solving secular equation, described in 
+  http://www.netlib.org/lapack/lawnspdf/lawn89.pdf.
+  Returns the approximations to eigevalues of a matirx of the form (D + rho * Z * Z^T).
+*/
 template <bool T, bool O>
 Matrix secular_solver(const MatrixT<T, O> &Diag, const Correction &Cor)
 {
@@ -478,10 +558,6 @@ Matrix secular_solver(const MatrixT<T, O> &Diag, const Correction &Cor)
 
   //defining a matrix with initial eigenvalue approximations:
   auto Y = initial_e_approx(Diag, Cor);
-
-  cout << "Initial Eigenvalue Approximation: \n" ;
-  print_matrix(Y);
-  //finding the upper limit for eigenvalues:
   
   for (int k = 0; k < m - 1; ++k)
   {
@@ -543,7 +619,6 @@ Matrix secular_solver(const MatrixT<T, O> &Diag, const Correction &Cor)
     const double c = w - (delta_prev * psi_) - (Z(k, 0) * Z(k, 0) / delta);
 
     //saving a computation
-    //cout << "root: " << (a * a) - (4 * b * c) <<"\n";
     const double root = std::sqrt((a * a) - (4 * b * c));
     double approx = 0;
 
@@ -573,6 +648,11 @@ Matrix secular_solver(const MatrixT<T, O> &Diag, const Correction &Cor)
   return Y;  
 }
 
+/*
+  Utilizes the eigenvector extraction scheme, described in file:///C:/Users/vs3ha/Downloads/144956.pdf,
+  given the diagonal matrix and the matrix of eigenvalues.
+  Returns the matrix of eigenvectors, defined in columns.
+*/
 template <bool T1, bool O1, bool T2, bool O2>
 Matrix evector_extract(const MatrixT<T1, O1> &Eig, const MatrixT<T2, O2> &Diag)
 {
@@ -618,8 +698,6 @@ Matrix evector_extract(const MatrixT<T1, O1> &Eig, const MatrixT<T2, O2> &Diag)
 
   }
   
-  //print_matrix(Z);
-  
 
   //computing approximation to each eigenvector
   //#pragma omp parallel for
@@ -641,17 +719,116 @@ Matrix evector_extract(const MatrixT<T1, O1> &Eig, const MatrixT<T2, O2> &Diag)
 
     Matrix::column_immerse(Q, Evec, i);
   }
-  
-  cout << "EVEC: \n";
-  print_matrix(Evec);
-
-
-  cout << "Compare_eigen_decomp: \n";
-  print_matrix(Evec * Eig * Evec.transpose());
 
   return Evec;
 }
 
+/*
+  eigen_decomp - using modified "Cuppen's Divide and Conquer" algorithm, 
+  described in J. J. M. Cuppen, A divide and conquer method for the symmetric tridiagonal eigenproblem, Numer. Math., 36 (1981), pp. 177–195,
+  performs the eigen decomposition of input symmetric tridiagonal matrix.
+  Returns an orthogonal matrix and a matrix of eigenvalues.
+*/
+template <bool T, bool O>
+MatrixPair eigen_decomp(MatrixT<T, O> &Sym)
+{
+  const int n = Sym.rows();
+  
+  if (n == 1)
+  {
+    Matrix Orth (n, n);
+    Orth(0,0) = 1;
+
+    return MatrixPair(Orth, Sym);
+  }
+
+  else if (n == 2) 
+  {
+    const double a  = Sym(0, 0);
+    const double d = Sym(1, 1);
+    const double c  = Sym(1, 0);
+    
+    Matrix Orth (n, n);
+    Matrix Diag  (n, n);
+
+    const double v = sqrt((a + d) * (a + d) - (4 * (a * d - c * c)));
+    const double l1 = ((a + d) + v) / 2; 
+    const double l2 = ((a + d) - v) / 2;
+    
+    Diag(0, 0) = l1;
+    Diag(1, 1) = l2;
+
+    //eigenvector magnitudes
+    const double v12 = ((l1 - a) / c);
+    const double v22 = ((l2 - a) / c);
+    const double v1m = sqrt( 1 + pow( v12, 2));
+    const double v2m = sqrt( 1 + pow( v22, 2));
+
+    Orth(0, 0) = 1.0 / v1m;
+    Orth(0, 1) = 1.0 / v2m;
+    Orth(1, 0) = v12 / v1m;
+    Orth(1, 1) = v22 / v2m;
+
+    return MatrixPair(Orth, Diag);
+  } 
+  else 
+  {
+    Correction Cor = block_diagonal(Sym);
+    
+    auto Hi = Sym.cut( n / 2, 1);
+    auto Lo = Sym.cut(n / 2, 0); 
+
+    const auto & [Orth1, Diag1] = eigen_decomp(Hi);
+    const auto & [Orth2, Diag2] = eigen_decomp(Lo);
+
+    auto Orth = Matrix::combine (Orth1, Orth2); 
+    auto Diag = Matrix::combine (Diag1, Diag2);
+
+    
+    const auto OrthT = Orth.transpose();
+    const auto & [scalar, unitVector] = Cor;
+    auto Z = (1 / (sqrt(2))) * (OrthT * unitVector);
+    double rho = 1 / (2 * scalar);
+
+    if (rho < 0)
+    {
+      rho = -rho;
+      Z = -1 * Z;
+      Diag = -1 * Diag;
+
+      auto [D, U, Or] = sorts<true, true>(Diag, Z, Orth); 
+      Cor = std::make_pair(rho, U);
+
+      
+      auto Eval = secular_solver(D, Cor);
+      auto Evec = evector_extract(Eval, D);
+
+      Eval = -1 * Eval;
+      Evec = -1 * Evec;
+
+      auto [Eva, Eve, Ort] = sorts<false, false>(Eval, Evec, Or); 
+
+      return MatrixPair(Ort * Eve, Eva);
+    }
+    else
+    {
+      auto [D, U, Or] = sorts<true, true>(Diag, Z, Orth); 
+      Cor = std::make_pair(rho, U);
+
+      auto Eval = secular_solver(D, Cor);      
+      auto Evec = evector_extract(Eval, D);
+      auto [Eva, Eve, Ort] = sorts<false, false>(Eval, Evec, Or); 
+
+      return MatrixPair(Ort * Eve, Eva);
+    }
+  }
+}
+
+/*
+  par_eigen_decomp - parallel vestion of the eigen_decomp algotithm. 
+  Uses std::future of each part of decomposition to achieve parallelism. 
+  Requires a depth parameter, exentually spawning 2^depth threads.
+*/
 template <bool T, bool O>
 MatrixPair par_eigen_decomp(MatrixT<T, O> &Sym, unsigned dep)
 {
@@ -757,158 +934,20 @@ MatrixPair par_eigen_decomp(MatrixT<T, O> &Sym, unsigned dep)
   }
 }
 
-template <bool T, bool O>
-MatrixPair eigen_decomp(MatrixT<T, O> &Sym)
-{
-  const int n = Sym.rows();
-  
-  if (n == 1)
-  {
-    Matrix Orth (n, n);
-    Orth(0,0) = 1;
-
-    return MatrixPair(Orth, Sym);
-  }
-
-  else if (n == 2) 
-  {
-    const double a  = Sym(0, 0);
-    const double d = Sym(1, 1);
-    const double c  = Sym(1, 0);
-    
-    Matrix Orth (n, n);
-    Matrix Diag  (n, n);
-
-    const double v = sqrt((a + d) * (a + d) - (4 * (a * d - c * c)));
-    const double l1 = ((a + d) + v) / 2; 
-    const double l2 = ((a + d) - v) / 2;
-    
-    Diag(0, 0) = l1;
-    Diag(1, 1) = l2;
-
-    //eigenvector magnitudes
-    const double v12 = ((l1 - a) / c);
-    const double v22 = ((l2 - a) / c);
-    const double v1m = sqrt( 1 + pow( v12, 2));
-    const double v2m = sqrt( 1 + pow( v22, 2));
-
-    Orth(0, 0) = 1.0 / v1m;
-    Orth(0, 1) = 1.0 / v2m;
-    Orth(1, 0) = v12 / v1m;
-    Orth(1, 1) = v22 / v2m;
-
-    return MatrixPair(Orth, Diag);
-  } 
-  else 
-  {
-      cout << "A: \n";
-      print_matrix(Sym);
-
-    Correction Cor = block_diagonal(Sym);
-    
-    auto Hi = Sym.cut( n / 2, 1);
-    auto Lo = Sym.cut(n / 2, 0); 
-
-    const auto & [Orth1, Diag1] = eigen_decomp(Hi);
-    const auto & [Orth2, Diag2] = eigen_decomp(Lo);
-
-    auto Orth = Matrix::combine (Orth1, Orth2); 
-    auto Diag = Matrix::combine (Diag1, Diag2);
-
-    
-    const auto OrthT = Orth.transpose();
-    const auto & [scalar, unitVector] = Cor;
-    auto Z = (1 / (sqrt(2))) * (OrthT * unitVector);
-    double rho = 1 / (2 * scalar);
-    
-    cout << "This has to be equal the original\n";
-    print_matrix(Orth * (Diag + ((1 / rho) * (Z * Z.transpose()))) * Orth.transpose());
-
-    if (rho < 0)
-    {
-      cout << "HEYYYYYYYYYYYYYYYYYYYYY\n";
-      rho = -rho;
-      Z = -1 * Z;
-      Diag = -1 * Diag;
-
-      auto [D, U, Or] = sorts<true, true>(Diag, Z, Orth); 
-      Cor = std::make_pair(rho, U);
-
-      
-      auto Eval = secular_solver(D, Cor);
-      //
-        cout << "orig_eigen_decomp: \n";
-        print_matrix(D + ( (1 / rho) * ( U * U.transpose())));
-      //
-      auto Evec = evector_extract(Eval, D);
-
-      Eval = -1 * Eval;
-      Evec = -1 * Evec;
-
-      auto [Eva, Eve, Ort] = sorts<false, false>(Eval, Evec, Or); 
-      cout << "Eigenvalue: \n";
-      print_matrix(Eva);
-
-      //cout << "This TOO has to be equal the original\n";
-      //print_matrix((Orth * (D + ((1 / rho) * (U * U.transpose()))) * Orth.transpose()));
-      
-      return MatrixPair(Ort * Eve, Eva);
-    }
-    else
-    {
-
-      auto [D, U, Or] = sorts<true, true>(Diag, Z, Orth); 
-      Cor = std::make_pair(rho, U);
-
-      auto Eval = secular_solver(D, Cor);
-
-      //
-        cout << "orig_eigen_decomp: \n";
-        print_matrix(D + ((1 / rho) * U * U.transpose()));
-      //
-      
-      auto Evec = evector_extract(Eval, D);
-
-      auto [Eva, Eve, Ort] = sorts<false, false>(Eval, Evec, Or); 
-
-      return MatrixPair(Ort * Eve, Eva);
-    }
-  }
-}
-
+/*
+  singular_value_decomp - utilizes previously-defined functions to perform Singular Value Decomposition of a given matrix.
+  returns a tuple, containing matrices "S", "U" nad "V^T".
+*/
 template <bool T, bool O>
 MatrixTuple singular_value_decomp(const MatrixT<T, O> &Init)
 {
-  cout << "A: \n";
-  print_matrix(Init);
   auto Sym = Init.transpose() * Init;
-  /////
-  cout << "(A^T)*A: \n";
-  print_matrix(Sym);
-  /////
   tridiagonalization(Sym);
-  /////
-  cout << "Tridiagonal: \n";
-  print_matrix(Sym);
-  /////
+
   auto [Ort, Eva] = eigen_decomp(Sym);
-  /////
-  cout << "Eigenvalue: \n";
-  print_matrix(Eva);
-  cout << "Eigenvector: \n";
-  print_matrix(Ort);
-  /////
+
   auto S = s_construction(Init, Eva);
   auto U = u_construction(Init, Ort, S);
-
-  cout << "Matrix U: \n";
-  print_matrix(U);
-  cout << "Matrix S: \n";
-  print_matrix(S);
-  cout << "Matrix V^T: \n";
-  print_matrix(Ort.transpose());
-  cout << "Re-Assembled Original: \n";
-  print_matrix(U * S * Ort.transpose());
 
   return MatrixTuple(U, S, Ort.transpose());
 }
