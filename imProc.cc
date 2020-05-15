@@ -21,6 +21,7 @@
 //custom matrix header
 #include "Matrix.h"
 #include "Functions.h"
+#include "Timer.hpp" 
 /************************************************************/
 // Using declarations
 
@@ -54,17 +55,34 @@ void result (Matrix &X, const Matrix &Y, const double est);
 /************************************************************/
 int main() 
 {
+    Timer <> t;
+    t.start();
+
+
+
+    
     unsigned dim = 14400; //each image in our set is 120x120 
     const int cutoff = (int) (0.8 * dim); //choose reduction cutoff <= 20%
 
+    
     std::vector<cv::String> im; //vector of pathfiles to the set data elements
-    cv::glob("./images/set*.png", im, false);
+    cv::glob("./images/set/*.png", im, false);
     std::string test_path = "./images/test/cheemse_test.png"; // path to the test image
 
+    //test_capture(test_path, dim);
+
+    
     //dealing with set data
     auto [Set, Mean] = set_capture(im, dim);
     Matrix A = Set - Mean;
-    Matrix U = orth_basis(A, cutoff, dim);
+    
+    //
+    t.stop();
+    cout << "I made it through intro in:" << t.getElapsedMs() <<"\n";
+    //
+
+
+    Matrix U = orth_basis(A, cutoff, dim); // I SEGFAULT HERE
     Matrix X = U * A; // The scalar projection of face - face_mean onto the base­faces - each column represents Xi
     const double est = max_threshold(X); 
 
@@ -74,6 +92,7 @@ int main()
     Matrix Y = U * B;
 
     result(X, Y, est);
+    
 }
 
 
@@ -119,32 +138,31 @@ double max_threshold(Matrix &X)
 MatrixPair set_capture (const std::vector<cv::String> & im, unsigned dim)
 {
     size_t set_size = im.size();
+    
     Matrix Mean (dim, 1); 
     Matrix Set (dim, set_size);
 
     cv::Mat Gray;
-    cv::Mat Binary;
     Matrix myGray(dim, 1);
 
     for (unsigned i = 0; i < set_size; ++i)
     {
         cvtColor(cv::imread(im[i]), Gray, cv::COLOR_BGR2GRAY); // reading in an image and turning it into grayscale
         // Convert image to binary
-        threshold(Gray, Binary, 50, 255, THRESH_BINARY | THRESH_OTSU);
         //Make transition form cv::Mat to Matrix and make it an (m * n) x 1 column matrix
-        std::copy(Binary.begin<uchar>(), Binary.end<uchar>(), myGray.begin());
-        Matrix::column_immerse(myGray, Set, i);
+        std::transform(Gray.begin<uchar>(), Gray.end<uchar>(), myGray.begin(), [] (uchar val) { return val / 255.0; });
+        Set = Matrix::column_immerse(myGray, Set, i);
         Mean = Mean + myGray;
     }
     
-    Mean *= 1 / set_size; // computing the mean face of each matrix
+    Mean *= 1 / (double) set_size; // computing the mean face of each matrix
 
 
     Matrix Mean_Rect (dim, set_size); // Making a rectangular matrix of mean column vectors
 
     for (unsigned i = 0; i < set_size; ++ i)
     {
-        Matrix::column_immerse(Mean, Mean_Rect, i);
+        Mean_Rect = Matrix::column_immerse(Mean, Mean_Rect, i);
     }
 
     return MatrixPair(Set, Mean_Rect);
@@ -153,26 +171,24 @@ MatrixPair set_capture (const std::vector<cv::String> & im, unsigned dim)
 Matrix test_capture (const std::string & test_path, unsigned dim)
 {
     cv::Mat Gray;
-    cv::Mat Binary;
     Matrix myGray(dim, 1);
     cvtColor(cv::imread(test_path), Gray, cv::COLOR_BGR2GRAY);
     // Convert image to binary
-    threshold(Gray, Binary, 50, 255, THRESH_BINARY | THRESH_OTSU);
+    cout << Gray << "\n";
     //turn Grey into normal and make it an (m * n) x 1 column matrix
-    std::copy(Binary.begin<uchar>(), Binary.end<uchar>(), myGray.begin());
+    std::transform(Gray.begin<uchar>(), Gray.end<uchar>(), myGray.begin(), [] (uchar val) { return val / 255.0; });
     return myGray;
 }
 
 Matrix orth_basis(const Matrix &A, const int cutoff, unsigned dim)
 {
     auto [U, S, VT] = singular_value_decomp(A); // Performing an SVD on A
-
     Matrix U_update (dim, cutoff);
 
     //fulling the orthogonal matrix with only the meaningful data columns
     for (int i = 0; i < cutoff; ++ i)
     {
-        Matrix::column_immerse(U.column_extract(i), U_update, i);
+        U_update = Matrix::column_immerse(U.column_extract(i), U_update, i);
     }
 
     return U.transpose();

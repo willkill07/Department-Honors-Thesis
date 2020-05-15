@@ -16,6 +16,7 @@
 
 //custom matrix header
 #include "Matrix.h"
+#include "Timer.hpp" 
 
 using std::cin;
 using std::cout;
@@ -386,14 +387,21 @@ Matrix u_construction(const MatrixT<T1, O1> &Init, MatrixT<T2, O2> &Orth, const 
   //#pragma omp parallel for
   for (int i = 0; i < m; ++i)
   {
+
+    
+    if (i % 100 == 0)
+    {
+      cout << i << "\n";
+    }
+
+
     const double s = S(i, i);
     auto V = Orth.column_extract(i);
     //print_matrix(V);
     Matrix C = (1 / s) * Init * V;
     U = Matrix::column_immerse(C, U, i);
   }
-  //cout << "U\n";
-  //print_matrix(U);
+  cout << "I made it through computing first m rows \n";
   gram_schmidt(U, m);
   
   return U;
@@ -799,7 +807,6 @@ MatrixPair eigen_decomp(MatrixT<T, O> &Sym)
       auto [D, U, Or] = sorts<true, true>(Diag, Z, Orth); 
       Cor = std::make_pair(rho, U);
 
-      
       auto Eval = secular_solver(D, Cor);
       auto Evec = evector_extract(Eval, D);
 
@@ -895,7 +902,7 @@ MatrixPair par_eigen_decomp(MatrixT<T, O> &Sym, unsigned dep)
       const auto & [Orth1, Diag1] = t1.get();
       const auto & [Orth2, Diag2] = t2.get();
     
-      const auto Orth  = Matrix::combine (Orth1, Orth2);
+      auto Orth  = Matrix::combine (Orth1, Orth2);
       auto Diag   = Matrix::combine (Diag1, Diag2);
       
       const auto OrthT = Orth.transpose();
@@ -904,32 +911,36 @@ MatrixPair par_eigen_decomp(MatrixT<T, O> &Sym, unsigned dep)
       double rho = 1 / (2 * scalar);
       
       if (rho < 0)
-      {
-        rho = -rho;
-        Z = -1 * Z;
-        Diag = -1 * Diag;
+    {
+      rho = -rho;
+      Z = -1 * Z;
+      Diag = -1 * Diag;
 
-        auto [D, U] = sorts<true, true>(Diag, Z); 
-        Cor = std::make_pair(rho, U);
-        auto Eval = secular_solver(D, Cor);
-        auto Evec = evector_extract(Eval, D);
+      auto [D, U, Or] = sorts<true, true>(Diag, Z, Orth); 
+      Cor = std::make_pair(rho, U);
 
-        Eval = -1 * Eval;
-        Evec = -1 * Evec;
+      
+      auto Eval = secular_solver(D, Cor);
+      auto Evec = evector_extract(Eval, D);
 
-        auto [Eva, Eve] = sorts<false, false>(Eval, Evec); 
-        return MatrixPair(Eve, Eva);
-      }
-      else
-      {
-        auto [D, U] = sorts<true, true>(Diag, Z); 
-        Cor = std::make_pair(rho, U);
-        auto Eval = secular_solver(D, Cor);
-        auto Evec = evector_extract(Eval, D);
-        const auto [Eva, Eve] = sorts<false, false>(Eval, Evec); 
-          
-        return MatrixPair(Eve, Eva);
-      }
+      Eval = -1 * Eval;
+      Evec = -1 * Evec;
+
+      auto [Eva, Eve, Ort] = sorts<false, false>(Eval, Evec, Or); 
+
+      return MatrixPair(Ort * Eve, Eva);
+    }
+    else
+    {
+      auto [D, U, Or] = sorts<true, true>(Diag, Z, Orth); 
+      Cor = std::make_pair(rho, U);
+
+      auto Eval = secular_solver(D, Cor);      
+      auto Evec = evector_extract(Eval, D);
+      auto [Eva, Eve, Ort] = sorts<false, false>(Eval, Evec, Or); 
+
+      return MatrixPair(Ort * Eve, Eva);
+    }
     }
   }
 }
@@ -941,15 +952,62 @@ MatrixPair par_eigen_decomp(MatrixT<T, O> &Sym, unsigned dep)
 template <bool T, bool O>
 MatrixTuple singular_value_decomp(const MatrixT<T, O> &Init)
 {
+  Timer <> t;
+
+  t.start();
   auto Sym = Init.transpose() * Init;
   tridiagonalization(Sym);
+  t.stop();
+  cout << "I made it through tridiagonalization in:" << t.getElapsedMs() <<"\n";
 
-  auto [Ort, Eva] = eigen_decomp(Sym);
+  t.start();
+  auto [Ort, Eva] = par_eigen_decomp(Sym, 4);
+  t.stop();
+  cout << "I made it through eigen decomp in:" << t.getElapsedMs() <<"\n";
 
+  t.start();
   auto S = s_construction(Init, Eva);
+  t.stop();
+  cout << "I have constructed matrix S in:" << t.getElapsedMs() <<"\n";
+  t.start();
   auto U = u_construction(Init, Ort, S);
+  t.stop();
+  cout << "I made it through SVD in:" << t.getElapsedMs() <<"\n";
 
   return MatrixTuple(U, S, Ort.transpose());
+}
+
+
+template <bool T, bool O>
+MatrixPair pca(const MatrixT<T, O> &Init)
+{
+
+    const int n = Init.rows();
+    const int m = Init.colms();
+
+    Matrix Mean (n, m);
+    Matrix Col (n, 1);
+
+    for (int i = 0; i < n; ++i)
+    {
+        for (int j = 0; j < m; ++j)
+        {
+            Col(i, 0) += Init(i, j);
+        }
+    }
+
+    Col *= 1 / (double) m;
+
+    for (int i = 0; i < m; ++i)
+    {
+        Mean = Matrix::column_immerse(Col, Mean, i);
+    }
+
+    auto M = Init - Mean;
+
+    auto Covariance = M * M.transpose();
+
+    return eigen_decomp(Covariance);
 }
 
 #endif

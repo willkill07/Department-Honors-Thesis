@@ -625,7 +625,7 @@ MatrixTuple singular_value_decomp(const MatrixT<T, O> &Init)
   cout << "Tridiagonal: \n";
   print_matrix(Sym);
   /////
-  auto [Ort, Eva] = eigen_decomp(Sym);
+  auto [Ort, Eva] = par_eigen_decomp(Sym, 4);
   /////
   cout << "Eigenvalue: \n";
   print_matrix(Eva);
@@ -901,32 +901,36 @@ MatrixPair par_eigen_decomp(MatrixT<T, O> &Sym, unsigned dep)
       double rho = 1 / (2 * scalar);
       
       if (rho < 0)
-      {
-        rho = -rho;
-        Z = -1 * Z;
-        Diag = -1 * Diag;
+    {
+      rho = -rho;
+      Z = -1 * Z;
+      Diag = -1 * Diag;
 
-        auto [D, U, Or] = sorts<true, true>(Diag, Z, Orth); 
-        Cor = std::make_pair(rho, U);
-        auto Eval = secular_solver(D, Cor);
-        auto Evec = evector_extract(Eval, D);
+      auto [D, U, Or] = sorts<true, true>(Diag, Z, Orth); 
+      Cor = std::make_pair(rho, U);
 
-        Eval = -1 * Eval;
-        Evec = -1 * Evec;
+      
+      auto Eval = secular_solver(D, Cor);
+      auto Evec = evector_extract(Eval, D);
 
-        auto [Eva, Eve, Ort] = sorts<false, false>(Eval, Evec, Or); 
-        return MatrixPair(Ort * Eve, Eva);
-      }
-      else
-      {
-        auto [D, U, Or] = sorts<true, true>(Diag, Z, Orth); 
-        Cor = std::make_pair(rho, U);
-        auto Eval = secular_solver(D, Cor);
-        auto Evec = evector_extract(Eval, D);
-        auto [Eva, Eve, Ort] = sorts<false, false>(Eval, Evec, Or); 
-          
-        return MatrixPair(Ort * Eve, Eva);
-      }
+      Eval = -1 * Eval;
+      Evec = -1 * Evec;
+
+      auto [Eva, Eve, Ort] = sorts<false, false>(Eval, Evec, Or); 
+
+      return MatrixPair(Ort * Eve, Eva);
+    }
+    else
+    {
+      auto [D, U, Or] = sorts<true, true>(Diag, Z, Orth); 
+      Cor = std::make_pair(rho, U);
+
+      auto Eval = secular_solver(D, Cor);      
+      auto Evec = evector_extract(Eval, D);
+      auto [Eva, Eve, Ort] = sorts<false, false>(Eval, Evec, Or); 
+
+      return MatrixPair(Ort * Eve, Eva);
+    }
     }
   }
 }
