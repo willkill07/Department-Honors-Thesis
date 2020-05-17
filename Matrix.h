@@ -25,6 +25,7 @@ Matrix.h - header file, containing the Matrix structure, used in the SVD.cc file
 #include <cmath>
 #include <numeric>
 #include <omp.h>
+#include <queue> 
 
 
 template <bool Transpose = false, bool Owning = true> struct MatrixT {
@@ -44,6 +45,7 @@ public:
   using const_reference = const value_type&;
   using const_pointer = const value_type*;
   using MatrixPair = std::pair<MatrixT, MatrixT>;
+  using MatrixQueue = std::queue<MatrixT>; 
 
   using default_type = MatrixT<false, true>;
   
@@ -387,13 +389,73 @@ public:
     return result;
   }
 
+  //creates eigenvectors fr exception case
+
+  static default_type exception_vec(const int dim)
+  {
+    default_type Evec (dim, dim);
+
+    Evec(0, 0) = 1;
+    for(int i = 1; i < dim; ++i)
+    {
+      Evec(dim - i, i) = 1;
+      Evec(0, i) = -1;
+      Evec(i, 0) = 1;
+    }
+
+    return Evec;
+  }
+
 };
 
+using Matrix = MatrixT<>;
+
+/*
+template <bool T, bool O>
+static bool correction_check(const MatrixT<T, O> &C)
+{
+  const int n = C.rows();
+  const double accuracy = std::pow(10, -10);
+
+  for (int i = 1; i < n; ++i)
+  {
+    for(int j = 0; j < n; ++j)
+    {
+      if(std::abs(C(i, i)) < accuracy)
+      {
+        return 1;
+      }
+    }
+  }
+
+  return 0;
+}
+*/
+
+//used for when matrix consists of identical entries
+template <bool T, bool O>
+static bool eigen_exception(const MatrixT<T, O> &Eig)
+{
+  const int n = Eig.rows();
+  const double accuracy = std::pow(10, -10);
+
+  if(Eig(0, 0) != 0)
+  {
+    for (int i = 1; i < n; ++i)
+    {
+      if(std::abs(Eig(i, i)) < accuracy)
+      {
+        return i;
+      }
+    }
+  }
+
+  return 0;
+}
 
 /*
 Below - Matrix multiplication and addition definitions.
 */
-using Matrix = MatrixT<>;
 
 template <bool T1, bool T2, bool O1, bool O2>
 Matrix operator*(MatrixT<T1, O1> const &A, MatrixT<T2, O2> const &B) {
