@@ -615,119 +615,43 @@ int main() {
 
   Matrix TEST_image (4, 4);
 
-  TEST_image(0, 0) = 3.92157;
-  TEST_image(0, 1) = 3.92157;
-  TEST_image(0, 2) = 3.96078;
-  TEST_image(0, 3) = 4.15686;
+  TEST_image(0, 0) = 3.72549;
+  TEST_image(0, 1) = 3.72549;
+  TEST_image(0, 2) = 3.72549;
+  TEST_image(0, 3) = 3.72549;
 
-  TEST_image(1, 0) = 3.96078;
-  TEST_image(1, 1) = 4.00000;
-  TEST_image(1, 2) = 4.07843;
-  TEST_image(1, 3) = 4.23529;
+  TEST_image(1, 0) = 3.68627;
+  TEST_image(1, 1) = 3.68627;
+  TEST_image(1, 2) = 3.68627;
+  TEST_image(1, 3) = 3.68627;
 
-  TEST_image(2, 0) = 4.15686;
-  TEST_image(2, 1) = 4.11765;
-  TEST_image(2, 2) = 4.11765;
-  TEST_image(2, 3) = 4.35294;
+  TEST_image(2, 0) = 3.68627;
+  TEST_image(2, 1) = 3.64706;
+  TEST_image(2, 2) = 3.64706;
+  TEST_image(2, 3) = 3.64706;
 
-  TEST_image(3, 0) = 4.35294;
-  TEST_image(3, 1) = 4.35294;
-  TEST_image(3, 2) = 4.39216;
-  TEST_image(3, 3) = 4.50980;
+  TEST_image(3, 0) = 3.64706;
+  TEST_image(3, 1) = 3.64706;
+  TEST_image(3, 2) = 3.64706;
+  TEST_image(3, 3) = 3.64706;
 
+  Matrix S (2, 2);
 
-  Matrix im (4, 4);
-
-  im(0, 0) = 10;
-  im(0, 1) = 10;
-  im(0, 2) = 10;
-  im(0, 3) = 10;
-
-  im(1, 0) = 10;
-  im(1, 1) = 10;
-  im(1, 2) = 10;
-  im(1, 3) = 10;
-
-  im(2, 0) = 10;
-  im(2, 1) = 10;
-  im(2, 2) = 10;
-  im(2, 3) = 10;
-
-  im(3, 0) = 10;
-  im(3, 1) = 10;
-  im(3, 2) = 10;
-  im(3, 3) = 10;
-
-   Matrix immore (4, 4);
-
-  immore(0, 0) = 3.45098;
-  immore(0, 1) = 3.56863;
-  immore(0, 2) = 3.56863;
-  immore(0, 3) = 3.56863;
-
-  immore(1, 0) = 3.60784;
-  immore(1, 1) = 3.72549;
-  immore(1, 2) = 3.72549;
-  immore(1, 3) = 3.60784;
-
-  immore(2, 0) = 3.64706;
-  immore(2, 1) = 3.76471;
-  immore(2, 2) = 3.76471;
-  immore(2, 3) = 3.68627;
-
-  immore(3, 0) = 3.68627;
-  immore(3, 1) = 3.80392;
-  immore(3, 2) = 3.80392;
-  immore(3, 3) = 3.80392;
-
-  Matrix immore_1 (4, 4);
-
-  immore_1(0, 0) = 10.00000;
-  immore_1(0, 1) = 10.00000;
-  immore_1(0, 2) = 10.00000;
-  immore_1(0, 3) = 10.00000;
-
-  immore_1(1, 0) = 10.00000;
-  immore_1(1, 1) = 10.00000;
-  immore_1(1, 2) = 10.00000;
-  immore_1(1, 3) = 10.00000;
-
-  immore_1(2, 0) = 10.00000;
-  immore_1(2, 1) = 10.00000;
-  immore_1(2, 2) = 10.00000;
-  immore_1(2, 3) = 10.00000;
-
-  immore_1(3, 0) = 10.00000;
-  immore_1(3, 1) = 9.96078;
-  immore_1(3, 2) = 9.96078;
-  immore_1(3, 3) = 9.96078;
-
-
-  Matrix sf (4, 4);
-
-  sf(0, 0) = 5.09804;
-  sf(0, 1) = 5.01961;
-  sf(0, 2) = 5.17647;
-  sf(0, 3) = 5.25490;
-
-  sf(1, 0) = 3.49020;
-  sf(1, 1) = 3.64706;
-  sf(1, 2) = 3.64706;
-  sf(1, 3) = 3.64706;
-
-  sf(2, 0) = 0.74510;
-  sf(2, 1) = 0.70588;
-  sf(2, 2) = 1.01961;
-  sf(2, 3) = 1.41176;
-
-  sf(3, 0) = 6.50980;
-  sf(3, 1) = 7.17647;
-  sf(3, 2) = 7.21569;
-  sf(3, 3) = 6.94118;
+  S(0, 0) = 10;
+  S(1, 0) = 10;
+  S(0, 1) = 10;
+  S(1, 1) = 10;
   
-  
-  singular_value_decomp(sf);
+  singular_value_decomp(S);
 
+  /*
+  auto A = TEST_B;
+  auto B = A;
+  tri(B);
+  print_matrix(B);
+  tridiagonalization(A);
+  print_matrix(B- A);
+  */
 }
 
 template <bool T, bool O>
@@ -793,17 +717,17 @@ MatrixTuple singular_value_decomp(const MatrixT<T, O> &Init)
   cout << "(A^T)*A: \n";
   print_matrix(Sym);
   /////
-  tridiagonalization(Sym);
+  tri(Sym);
   /////
   cout << "Tridiagonal: \n";
   print_matrix(Sym);
   /////
   auto [Ort, Eva] = eigen_decomp(Sym);
   /////
-
-  cout << "Eigen_decomp: \n";
-  print_matrix(Ort * Eva * Ort.transpose());
-  /////
+  cout << "Eigenvalue: \n";
+  print_matrix(Eva);
+  cout << "Eigenvector: \n";
+  print_matrix(Ort);
   auto S = s_construction(Init, Eva);
   auto U = u_construction(Init, Ort, S);
 
@@ -867,80 +791,12 @@ void tri(MatrixT<T, O> &Sym)
     {
       v(j, 0) = Sym (j, k);
     }
-    //cout << "v: \n";
-    //print_matrix(v);
-    
-    Matrix u (n, 1);
 
-    for(int j = k; j < n; ++j)
-    {
-      double sum = 0;
-      for(int i = k + 1; i < n; ++i)
-      {
-        sum += Sym(j, i) * v(i, 0);
-      }
+    auto u = ((1 / RSQ) * Sym * v);
 
-      u(j, 0) = (1 / RSQ) * sum;
-    }
+    auto z = (u - (1 / (2 * RSQ) * (v.transpose() * u)(0, 0) * v));
 
-    //cout << "u: \n";
-    //print_matrix(u);
-
-    //cout << "u has to be equal: \n";
-    //print_matrix((1 / RSQ) * Sym * v);
-
-    double prod = 0;
-    for(int i = k + 1; i < n; ++i)
-    {
-      prod += u(i, 0) * v(i, 0);
-    }
-
-    //cout << "prod: " << prod << " should be equal to: \n";
-    //print_matrix(v.transpose() * u);
-
-    Matrix z (n, 1);
-    for ( int j = k; j < n; ++j)
-    {
-      z(j, 0) = u(j, 0) - ((prod/ (2 * RSQ)) * v(j, 0));
-    }
-
-    //cout << "z: \n";
-    //print_matrix(z);
-
-    //cout << "z should be equal to: \n";
-    //print_matrix(u - (1 / (2 * RSQ) * (v.transpose() * u)(0, 0) * v));
-
-    //auto A = Sym;
-    //print_matrix(A);
-
-
-    for ( int l = k + 1; l < n; ++l)
-    {
-      for (int j = l + 1; j < n; ++j)
-      {
-        Sym(j, l) = Sym(j, l) - (v(l, 0) * z(j, 0)) - (v(j, 0) * z(l, 0));
-        Sym(l, j) = Sym(j, l);
-      }
-      Sym(l, l) = Sym(l, l) - (2 * v(l, 0) * z(l, 0));
-    }
-
-    Sym(n - 1, n - 1) = Sym(n - 1, n - 1); //- (2 * v(n - 1, 0) * z(n - 1, 0));
-    //cout << Sym(n - 1, n - 1) << "\n";
-    //cout << v(n - 1, 0) << "\n";
-    //cout << z(n - 1, 0) << "\n";
-
-    for (int j = k + 2; j < n; ++j)
-    {
-      Sym(k, j) = 0;
-      Sym(j, k) = 0;
-    }
-
-    Sym(k + 1, k) = Sym(k + 1, k) - (v(k + 1, 0) * z(k, 0));
-    Sym(k, k + 1) = Sym (k + 1, k);
-
-    //print_matrix(Sym);
-    //cout << "should be equal to: \n";
-    //print_matrix(A - (v * z.transpose()) - (z * v.transpose()));
+    Sym = (Sym - (v * z.transpose()) - (z * v.transpose()));
 
   }
 }
@@ -1059,9 +915,11 @@ MatrixPair eigen_decomp(MatrixT<T, O> &Sym)
     auto Z = (1 / (sqrt(2))) * (OrthT * unitVector);
     double rho = 1 / (2 * scalar);
 
+    cout << "This has to be equal the original\n";
+    print_matrix(Orth * (Diag + ((1 / rho) * Z * Z.transpose()) * OrthT));
+
     if (rho < 0)
     {
-      cout << "HEYYYYYYYYYYYYYYYYYYYYY\n";
       rho = -rho;
       Z = -1 * Z;
       Diag = -1 * Diag;
@@ -1070,30 +928,18 @@ MatrixPair eigen_decomp(MatrixT<T, O> &Sym)
 
       Cor = std::make_pair(rho, U);
       auto  Eval = secular_solver(D, Cor);      
-
-      Matrix Evec (n, n);
-      if(eigen_exception(Eval))
-      {
-        Evec = Matrix::exception_vec(n);
-        Or = Matrix::identity(n);
-      }
-      else
-      {
-        Evec = evector_extract(Eval, D);
-        Evec = -1 * Evec;
-      }
+      auto  Evec = evector_extract(Eval, D);
 
       Eval = -1 * Eval;
 
       auto [Eva, Eve, Ort] = sorts<false, false>(Eval, Evec, Or); 
 
-      cout << "Eigenvalue: \n";
-      print_matrix(Eva);
-      cout << "Eigenvector: \n";
-      print_matrix(Eve);
+      cout << "EVAL: \n";
+      print_matrix(Eval);
 
-      cout << "Eigenvector * ort: \n";
-      print_matrix(Ort * Eve);
+      cout << "EVEC: \n";
+      print_matrix(Evec);
+
       
 
       //cout << "This TOO has to be equal the original\n";
@@ -1108,19 +954,15 @@ MatrixPair eigen_decomp(MatrixT<T, O> &Sym)
       Cor = std::make_pair(rho, U);
 
       auto Eval = secular_solver(D, Cor);
-      
-      Matrix Evec (n, n);
-      if(eigen_exception(Eval))
-      {
-        Evec = Matrix::exception_vec(n);
-        Or = Matrix::identity(n);
-      }
-      else
-      {
-        Evec = evector_extract(Eval, D);
-      }
+      auto  Evec = evector_extract(Eval, D);
 
       auto [Eva, Eve, Ort] = sorts<false, false>(Eval, Evec, Or); 
+
+      cout << "EVAL: \n";
+      print_matrix(Eval);
+
+      cout << "EVEC: \n";
+      print_matrix(Evec);
 
       return MatrixPair(Ort * Eve, Eva);
     }
@@ -1145,7 +987,6 @@ MatrixPair par_eigen_decomp(MatrixT<T, O> &Sym, unsigned dep)
 
   else if (n == 2) 
   {
-    print_matrix(Sym);
     const double a  = Sym(0, 0);
     const double d = Sym(1, 1);
     const double c  = Sym(1, 0);
@@ -1171,8 +1012,6 @@ MatrixPair par_eigen_decomp(MatrixT<T, O> &Sym, unsigned dep)
     Orth(1, 0) = v12 / v1m;
     Orth(1, 1) = v22 / v2m;
 
-    print_matrix(Diag);
-
     return MatrixPair(Orth, Diag);
   } 
   else 
@@ -1183,6 +1022,9 @@ MatrixPair par_eigen_decomp(MatrixT<T, O> &Sym, unsigned dep)
     }
     else 
     {
+      cout << "A: \n";
+      print_matrix(Sym);
+
       Correction Cor = block_diagonal(Sym);
       
       auto Hi = Sym.cut( n / 2, 1);
@@ -1222,6 +1064,12 @@ MatrixPair par_eigen_decomp(MatrixT<T, O> &Sym, unsigned dep)
 
       auto [Eva, Eve, Ort] = sorts<false, false>(Eval, Evec, Or); 
 
+      cout << "EVAL: \n";
+      print_matrix(Eval);
+
+      cout << "EVEC: \n";
+      print_matrix(Evec);
+
       return MatrixPair(Ort * Eve, Eva);
     }
     else
@@ -1232,6 +1080,12 @@ MatrixPair par_eigen_decomp(MatrixT<T, O> &Sym, unsigned dep)
       auto Eval = secular_solver(D, Cor);      
       auto Evec = evector_extract(Eval, D);
       auto [Eva, Eve, Ort] = sorts<false, false>(Eval, Evec, Or); 
+
+      cout << "EVAL: \n";
+      print_matrix(Eval);
+
+      cout << "EVEC: \n";
+      print_matrix(Evec);
 
       return MatrixPair(Ort * Eve, Eva);
     }
@@ -1265,10 +1119,6 @@ Matrix secular_solver(const MatrixT<T, O> &Diag, const Correction &Cor)
     double approx = 1;
     while(std::abs(approx) > accuracy)
     {
-      if(k == 0)
-      {
-        cout << Y(k, k) << "\n";
-      }
       //small necessary computations
       const double y = Y(k, k);
       const double delta = Diag(k, k) - y;
@@ -1287,11 +1137,6 @@ Matrix secular_solver(const MatrixT<T, O> &Diag, const Correction &Cor)
 
       //saving a computation
       const double root = std::sqrt((a * a) - (4 * b * c));
-
-      if(k == 0)
-      {
-        cout << w << "\n";
-      }
 
       if (a <= 0)
       {
@@ -1430,13 +1275,6 @@ Matrix evector_extract(const MatrixT<T1, O1> &Eig, const MatrixT<T2, O2> &Diag)
 
     Matrix::column_immerse(Q, Evec, i);
   }
-  
-  cout << "EVEC: \n";
-  print_matrix(Evec);
-
-
-  cout << "Compare_eigen_decomp: \n";
-  print_matrix(Evec * Eig * Evec.transpose());
 
   return Evec;
 }

@@ -29,6 +29,7 @@ using std::pow;
 using Correction = std::pair<double, Matrix>;
 using MatrixPair = std::pair<Matrix, Matrix>;
 using MatrixTuple = std::tuple<Matrix, Matrix, Matrix>;
+using MatrixQueue = std::queue<Matrix>; 
 
 /************************************************************/
 // Small mathematical functions
@@ -809,18 +810,11 @@ MatrixPair eigen_decomp(MatrixT<T, O> &Sym)
       auto [D, U, Or] = sorts<true, true>(Diag, Z, Orth); 
       Cor = std::make_pair(rho, U);
 
-      
+      cout << "correction: \n";
+      print_matrix(U);
+
       auto Eval = secular_solver(D, Cor);
-      Matrix Evec (n, n);
-      if(eigen_exception(Eval))
-      {
-        Evec = Matrix::exception_vec(n);
-        Or = Matrix::identity(n);
-      }
-      else
-      {
-        Evec = evector_extract(Eval, D);
-      }
+      auto Evec = evector_extract(Eval, D);
 
       Eval = -1 * Eval;
       Evec = -1 * Evec;
@@ -838,18 +832,11 @@ MatrixPair eigen_decomp(MatrixT<T, O> &Sym)
       auto [D, U, Or] = sorts<true, true>(Diag, Z, Orth); 
       Cor = std::make_pair(rho, U);
 
+      cout << "correction: \n";
+      print_matrix((1/rho) * U * U.transpose());
+
       auto Eval = secular_solver(D, Cor);
-      
-      Matrix Evec (n, n);
-      if(eigen_exception(Eval))
-      {
-        Evec = Matrix::exception_vec(n);
-        Or = Matrix::identity(n);
-      }
-      else
-      {
-        Evec = evector_extract(Eval, D);
-      }
+      auto Evec = evector_extract(Eval, D);
 
       auto [Eva, Eve, Ort] = sorts<false, false>(Eval, Evec, Or); 
 
@@ -878,6 +865,7 @@ MatrixPair par_eigen_decomp(MatrixT<T, O> &Sym, unsigned dep)
 
   else if (n == 2) 
   {
+    
     const double a  = Sym(0, 0);
     const double d = Sym(1, 1);
     const double c  = Sym(1, 0);
@@ -902,6 +890,8 @@ MatrixPair par_eigen_decomp(MatrixT<T, O> &Sym, unsigned dep)
     Orth(0, 1) = 1.0 / v2m;
     Orth(1, 0) = v12 / v1m;
     Orth(1, 1) = v22 / v2m;
+
+    
 
     return MatrixPair(Orth, Diag);
   } 
@@ -936,7 +926,6 @@ MatrixPair par_eigen_decomp(MatrixT<T, O> &Sym, unsigned dep)
       
       if (rho < 0)
     {
-      
       rho = -rho;
       Z = -1 * Z;
       Diag = -1 * Diag;
@@ -944,21 +933,12 @@ MatrixPair par_eigen_decomp(MatrixT<T, O> &Sym, unsigned dep)
       auto [D, U, Or] = sorts<true, true>(Diag, Z, Orth); 
       Cor = std::make_pair(rho, U);
 
-      auto Eval = secular_solver(D, Cor);
-      Matrix Evec (n, n);
       
-      if(eigen_exception(Eval))
-      {
-        Evec = Matrix::exception_vec(n);
-        Or = Matrix::identity(n);
-      }
-      else
-      {
-        Evec = evector_extract(Eval, D);
-        Evec = -1 * Evec;
-      }
+      auto Eval = secular_solver(D, Cor);
+      auto Evec = evector_extract(Eval, D);
 
       Eval = -1 * Eval;
+      Evec = -1 * Evec;
 
       auto [Eva, Eve, Ort] = sorts<false, false>(Eval, Evec, Or); 
 
@@ -970,16 +950,7 @@ MatrixPair par_eigen_decomp(MatrixT<T, O> &Sym, unsigned dep)
       Cor = std::make_pair(rho, U);
 
       auto Eval = secular_solver(D, Cor);      
-      Matrix Evec (n, n);
-      if(eigen_exception(Eval))
-      {
-        Evec = Matrix::exception_vec(n);
-        Or = Matrix::identity(n);
-      }
-      else
-      {
-        Evec = evector_extract(Eval, D);
-      }
+      auto Evec = evector_extract(Eval, D);
       auto [Eva, Eve, Ort] = sorts<false, false>(Eval, Evec, Or); 
 
       return MatrixPair(Ort * Eve, Eva);
@@ -997,31 +968,30 @@ MatrixTuple singular_value_decomp(const MatrixT<T, O> &Init)
 {
   auto Sym = Init.transpose() * Init;
   tridiagonalization(Sym);
-
+  
   auto [Ort, Eva] = par_eigen_decomp(Sym, 4);
   auto S = s_construction(Init, Eva);
   auto U = u_construction(Init, Ort, S);
-
+  
   return MatrixTuple(U, S, Ort.transpose());
 }
 
 template <bool T, bool O>
-double compression (MatrixT<T, O>& Init, const double cutoff)
+Matrix compression (MatrixT<T, O>& Init, const double cutoff)
 {
-    print_matrix(Init);
     auto [U, S, V] = singular_value_decomp(Init);
-    cout << "res\n";
+    
     const int n = Init.rows();
     const int m = Init.colms();
 
     auto M = U * S * V.transpose();
 
-    //if(!isnan((U * S * V.transpose())(0, 0)))
+    //if(std::abs(M(0, 0) - Init(0, 0)) < std::pow(10, -4))
 
-    if(std::abs(M(0, 0) - Init(0, 0)) < std::pow(10, -4))
+    if(!isnan((U * S * V.transpose())(0, 0)))
     {
       const int n_comp = (int) Init.rows() * cutoff;
-      const int m_comp = (int) Init.rows() * cutoff;
+      const int m_comp = (int) Init.colms() * cutoff;
 
       Matrix U_comp (n, n_comp);
       Matrix S_comp (n_comp, m_comp);
@@ -1051,15 +1021,38 @@ double compression (MatrixT<T, O>& Init, const double cutoff)
           }
       }
       
-      Init = (U_comp * S_comp * V_comp.transpose());
-      return 0.0;
+      return (U_comp * S_comp * V_comp.transpose());
     }
     else 
     {
-
-      print_matrix(M);
-      print_matrix(Init);
       
+      MatrixQueue origQ = Matrix::partition(Init, (n / 2));
+      MatrixQueue resQ;
+
+      while (!origQ.empty())
+      {   
+          auto A = origQ.front();
+          auto New = compression(A, cutoff);
+          origQ.pop();
+          resQ.push(New);
+      }
+
+      return Matrix::assembling(resQ, n,m);
+      
+      /*
+      cout << "decomposed: \n";
+      print_matrix(M);
+      cout << "original: \n";
+      print_matrix(Init);
+
+      auto Sym = Init.transpose() * Init;
+      tridiagonalization(Sym);
+      
+      auto [Ort, Eva] = eigen_decomp(Sym);
+      cout << "Eig: \n";
+      print_matrix(Eva);
+
+      //make all misses black
       for(int i = 0; i < n; ++i)
       {
         for (int j = 0; j < m; ++j)
@@ -1067,8 +1060,7 @@ double compression (MatrixT<T, O>& Init, const double cutoff)
           Init(i, j) = 0;
         }
       }
-      
-      return 1.0;
+      */
     }
 }
 

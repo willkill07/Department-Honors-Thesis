@@ -390,7 +390,7 @@ public:
   }
 
   //creates eigenvectors fr exception case
-
+/*
   static default_type exception_vec(const int dim)
   {
     default_type Evec (dim, dim);
@@ -405,7 +405,67 @@ public:
 
     return Evec;
   }
+  */
 
+  template <bool T, bool O>
+  static MatrixQueue partition (MatrixT<T, O> Init, const int block_size)
+  {
+      const int n = Init.rows();
+      const int m = Init.colms();  
+
+      MatrixQueue Q;
+
+      for (int ii = 0; ii < n; ii += block_size)
+      {
+          for (int jj = 0; jj < m; jj += block_size)
+          {
+              const int r_bound = std::min(ii + block_size, n);
+              const int c_bound = std::min(jj + block_size, m);
+              default_type Block (r_bound - ii, c_bound - jj);
+
+              for(int i = 0; (i + ii) < r_bound; ++i)
+              {
+                  for(int j = 0; (j + jj) < c_bound; ++j)
+                  {
+                      Block(i, j) = Init(i + ii, j + jj);
+                  }
+              }
+              Q.push(Block);
+          }
+      }   
+
+      return Q;
+  }
+
+
+  static default_type assembling (MatrixQueue Q, const int rows, const int colms)
+  {
+    default_type M (rows, colms);
+
+    int row_block = 0;
+    int colmn_block = 0;
+
+    for (int ii = 0; ii < rows; ii += row_block)
+    {
+      for (int jj = 0; jj < colms; jj += colmn_block)
+      {
+        auto piece = Q.front();
+        Q.pop();
+        row_block = piece.rows();
+        colmn_block = piece.colms();
+
+        for (int i = 0; i < row_block; ++i)
+        {
+          for (int j = 0; j < colmn_block; ++j)
+          {
+            M(i + ii, j + jj) = piece(i, j);
+          }
+        }
+      }
+    }
+    return M;
+  }
+  
 };
 
 using Matrix = MatrixT<>;
@@ -430,7 +490,7 @@ static bool correction_check(const MatrixT<T, O> &C)
 
   return 0;
 }
-*/
+
 
 //used for when matrix consists of identical entries
 template <bool T, bool O>
@@ -451,11 +511,12 @@ static bool eigen_exception(const MatrixT<T, O> &Eig)
   }
 
   return 0;
-}
+}*/
 
 /*
 Below - Matrix multiplication and addition definitions.
 */
+
 
 template <bool T1, bool T2, bool O1, bool O2>
 Matrix operator*(MatrixT<T1, O1> const &A, MatrixT<T2, O2> const &B) {

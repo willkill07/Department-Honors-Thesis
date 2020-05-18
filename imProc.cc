@@ -57,12 +57,6 @@ void result (Matrix &X, const Matrix &Y, const double est);
 
 void playground (const std::string & file_path, const double cutoff);
 
-template <bool T, bool O>
-MatrixQueue partition (MatrixT<T, O> Init);
-
-Matrix assembling (MatrixQueue M, const int rows, const int colms);
-
-
 /************************************************************/
 int main() 
 {
@@ -71,7 +65,7 @@ int main()
     
     std::vector<cv::String> im; //vector of pathfiles to the set data elements
     cv::glob("./images/set/*.png", im, false);
-    std::string test_path = "./images/test/300x191.png"; // path to the test image
+    std::string test_path = "./images/test/120.png"; // path to the test image
 
     playground(test_path, cutoff);
 
@@ -81,97 +75,31 @@ int main()
 void playground (const std::string & file_path, const double cutoff)
 {
     cv::Mat Gray;
-    Matrix myGray(300, 191);
+    Matrix myGray(120, 120);
     cvtColor(cv::imread(file_path), Gray, cv::COLOR_BGR2GRAY);
     std::transform(Gray.begin<uchar>(), Gray.end<uchar>(), myGray.begin(), [] (uchar val) { return val / 25.5; });
 
-    MatrixQueue origQ = partition(myGray);
+    MatrixQueue origQ = Matrix::partition(myGray, 4);
     MatrixQueue resQ;
 
-    double countMisses = 0.0;
-    double qSize = origQ.size();
-    
     while (!origQ.empty())
     {   
         auto A = origQ.front();
-        countMisses += compression(A, cutoff);
+        auto New = compression(A, cutoff);
         origQ.pop();
-        resQ.push(A);
+        resQ.push(New);
     }
     
-    auto Processed = assembling(resQ, myGray.rows(), myGray.colms());
-    
-    cout << "Miss percentage: " << 100 * countMisses / qSize << " %\n";
+    auto Processed = Matrix::assembling(resQ, myGray.rows(), myGray.colms());
     Processed *= 25.50;
     
     //std::copy(Processed.begin(), Processed.end(), Gray.begin<uchar>());
-    cv::Mat Res(300, 191, CV_64F, Processed.begin());
+    cv::Mat Res(120, 120, CV_64F, Processed.begin());
     //cout << Res << "\n";
     imwrite( "./images/new_cheems.jpg", Res );
+    
 }
 
-
-//precondition ((n >= 8) || (m >= 8))
-template <bool T, bool O>
-MatrixQueue partition (MatrixT<T, O> Init)
-{
-    const int n = Init.rows();
-    const int m = Init.colms();  
-    const int block_size = 4;
-
-    MatrixQueue Q;
-
-    for (int ii = 0; ii < n; ii += block_size)
-    {
-        for (int jj = 0; jj < m; jj += block_size)
-        {
-            const int r_bound = std::min(ii + block_size, n);
-            const int c_bound = std::min(jj + block_size, m);
-            Matrix Block (r_bound - ii, c_bound - jj);
-
-            for(int i = 0; (i + ii) < r_bound; ++i)
-            {
-                for(int j = 0; (j + jj) < c_bound; ++j)
-                {
-                    Block(i, j) = Init(i + ii, j + jj);
-                }
-            }
-            Q.push(Block);
-        }
-    }   
-
-    return Q;
-}
-
-Matrix assembling (MatrixQueue Q, const int rows, const int colms)
-{
-
-    Matrix M (rows, colms);
-
-    int row_block = 0;
-    int colmn_block = 0;
-
-    for (int ii = 0; ii < rows; ii += row_block)
-    {
-        for (int jj = 0; jj < colms; jj += colmn_block)
-        {
-            auto piece = Q.front();
-            Q.pop();
-            row_block = piece.rows();
-            colmn_block = piece.colms();
-
-            for (int i = 0; i < row_block; ++i)
-            {
-                for (int j = 0; j < colmn_block; ++j)
-                {
-                    M(i + ii, j + jj) = piece(i, j);
-                }
-            }
-        }
-    }
-
-    return M;
-}
 
 /*****************************************************/
 /****************UNDER CONSTRUCTION*******************/
