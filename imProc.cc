@@ -1,4 +1,4 @@
-
+#define 	CV_MINMAX   32
 
 /************************************************************/
 // System includes
@@ -57,6 +57,8 @@ void result (Matrix &X, const Matrix &Y, const double est);
 
 void playground (const std::string & file_path, const double cutoff);
 
+bool AddGaussianNoise(const Mat Src, Mat &Dest, const double stddev);
+
 /************************************************************/
 int main() 
 {
@@ -75,11 +77,16 @@ int main()
 void playground (const std::string & file_path, const double cutoff)
 {
     cv::Mat Gray;
+    cv::Mat GrayNoise;
     Matrix myGray(120, 120);
     cvtColor(cv::imread(file_path), Gray, cv::COLOR_BGR2GRAY);
-    std::transform(Gray.begin<uchar>(), Gray.end<uchar>(), myGray.begin(), [] (uchar val) { return val / 25.5; });
-
-    MatrixQueue origQ = Matrix::partition(myGray, 4);
+    AddGaussianNoise(Gray, GrayNoise, 0.05);
+    imwrite( "./images/processed.png", GrayNoise );
+    
+    /*
+    std::transform(GrayNoise.begin<uchar>(), GrayNoise.end<uchar>(), myGray.begin(), [] (uchar val) { return val / 25.5; });
+    
+    MatrixQueue origQ = Matrix::partition(myGray, 8);
     MatrixQueue resQ;
 
     while (!origQ.empty())
@@ -96,10 +103,22 @@ void playground (const std::string & file_path, const double cutoff)
     //std::copy(Processed.begin(), Processed.end(), Gray.begin<uchar>());
     cv::Mat Res(120, 120, CV_64F, Processed.begin());
     //cout << Res << "\n";
-    imwrite( "./images/new_cheems.jpg", Res );
-    
+    imwrite( "./images/processed.png", Res );
+    */
 }
 
+
+bool AddGaussianNoise(const Mat Gray, Mat & Res, const double stddev)
+{
+    cv::Mat noise = Mat(Gray.size(),CV_64F);
+    normalize(Gray, Res, 0.0, 1.0, CV_MINMAX, CV_64F);
+    cv::randn(noise, 0, stddev);
+    Res = Res + noise;
+    normalize(Res, Res, 0.0, 1.0, CV_MINMAX, CV_64F);
+    Res.convertTo(Res, CV_32F, 255, 0);
+
+    return true;
+}
 
 /*****************************************************/
 /****************UNDER CONSTRUCTION*******************/

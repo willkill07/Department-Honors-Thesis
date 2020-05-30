@@ -8,7 +8,7 @@ DEPS := $(SRCS:.cc=.d)
 
 .PHONY: all clean veryclean
 
-all : SVD imProc PCA
+all : SVD imProc
 
 % : %.cc
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $< $(LDFLAGS) -o $@ 

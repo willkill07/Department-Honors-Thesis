@@ -642,16 +642,31 @@ int main() {
   S(0, 1) = 10;
   S(1, 1) = 10;
   
-  singular_value_decomp(S);
 
-  /*
-  auto A = TEST_B;
-  auto B = A;
-  tri(B);
-  print_matrix(B);
-  tridiagonalization(A);
-  print_matrix(B- A);
-  */
+  Matrix TEST_im (4, 4);
+
+  TEST_im(0, 0) = 10;
+  TEST_im(0, 1) = 10;
+  TEST_im(0, 2) = 10;
+  TEST_im(0, 3) = 10;
+
+  TEST_im(1, 0) = 10;
+  TEST_im(1, 1) = 10;
+  TEST_im(1, 2) = 10;
+  TEST_im(1, 3) = 10;
+
+  TEST_im(2, 0) = 10;
+  TEST_im(2, 1) = 10;
+  TEST_im(2, 2) = 10;
+  TEST_im(2, 3) = 10;
+
+  TEST_im(3, 0) = 10;
+  TEST_im(3, 1) = 10;
+  TEST_im(3, 2) = 10;
+  TEST_im(3, 3) = 10;
+  
+
+  singular_value_decomp(TEST_Odd);
 }
 
 template <bool T, bool O>
@@ -740,6 +755,12 @@ MatrixTuple singular_value_decomp(const MatrixT<T, O> &Init)
   cout << "Re-Assembled Original: \n";
   print_matrix(U * S * Ort.transpose());
 
+  cout << "U check: \n";
+  print_matrix(U.transpose() * U);
+
+   cout << "V check: \n";
+  print_matrix(Ort.transpose() * Ort);
+
   return MatrixTuple(U, S, Ort.transpose());
 }
 
@@ -792,11 +813,13 @@ void tri(MatrixT<T, O> &Sym)
       v(j, 0) = Sym (j, k);
     }
 
-    auto u = ((1 / RSQ) * Sym * v);
+    auto u = ((1 / RSQ) *(Sym * v));
 
-    auto z = (u - (1 / (2 * RSQ) * (v.transpose() * u)(0, 0) * v));
+    //auto z = (u - ((1 / (2 * RSQ)) * ((v.transpose() * u)(0, 0) * v)));
 
-    Sym = (Sym - (v * z.transpose()) - (z * v.transpose()));
+    auto z = (u - ((1 / (2 * RSQ)) * ((v.transpose() * u)(0, 0) * v)));
+
+    Sym = (Sym - (v * z.transpose())) - (z * v.transpose());
 
   }
 }
@@ -825,7 +848,16 @@ void tridiagonalization(MatrixT<T, O> &Sym)
 
     const double leadingVal = Sym(k + 1, k);
     //final alpha definition
-    alpha = -(std::sqrt(alpha)); 
+    //if(leadingVal == 0)
+    //{
+      alpha = -(std::sqrt(alpha)); 
+    
+    //}
+    //else 
+    //{
+      //alpha = -((std::sqrt(alpha)) * leadingVal)/ (std::abs(leadingVal));
+    //}
+    
     //represents 2r^2
     RSQ = std::pow(alpha, 2) - (alpha * leadingVal); 
     
@@ -833,9 +865,9 @@ void tridiagonalization(MatrixT<T, O> &Sym)
     W(k + 1, 0) = (0.5) * (leadingVal - alpha); 
 
     auto WTW = W * W.transpose(); 
-    WTW = Matrix::identity(n) + ((-4 / RSQ) * WTW);
+    auto WTW2 = Matrix::identity(n) + ((-4 / RSQ) * WTW);
     //transforming the original matrix
-    Sym = WTW * Sym * WTW;
+    Sym = WTW2 * Sym * WTW2;
   }
 }
 
@@ -866,6 +898,7 @@ MatrixPair eigen_decomp(MatrixT<T, O> &Sym)
 
   else if (n == 2) 
   {
+
     const double a  = Sym(0, 0);
     const double d = Sym(1, 1);
     const double c  = Sym(1, 0);
@@ -895,8 +928,8 @@ MatrixPair eigen_decomp(MatrixT<T, O> &Sym)
   } 
   else 
   {
-      cout << "A: \n";
-      print_matrix(Sym);
+    cout << "A: \n";
+    print_matrix(Sym);
 
     Correction Cor = block_diagonal(Sym);
     
@@ -908,15 +941,17 @@ MatrixPair eigen_decomp(MatrixT<T, O> &Sym)
 
     auto Orth = Matrix::combine (Orth1, Orth2); 
     auto Diag = Matrix::combine (Diag1, Diag2);
-
     
-    const auto OrthT = Orth.transpose();
+    auto OrthT = Orth.transpose();
     const auto & [scalar, unitVector] = Cor;
     auto Z = (1 / (sqrt(2))) * (OrthT * unitVector);
+    //double rho = 1 / (2 * scalar);
     double rho = 1 / (2 * scalar);
 
     cout << "This has to be equal the original\n";
-    print_matrix(Orth * (Diag + ((1 / rho) * Z * Z.transpose()) * OrthT));
+    print_matrix(Orth * (Diag + ((1 / rho) * (Z * (Z.transpose())))) * Orth.transpose());
+  
+
 
     if (rho < 0)
     {
@@ -926,12 +961,16 @@ MatrixPair eigen_decomp(MatrixT<T, O> &Sym)
 
       auto [D, U, Or] = sorts<true, true>(Diag, Z, Orth); 
 
+      cout << "Or: \n";
+      print_matrix(Or);
+
       Cor = std::make_pair(rho, U);
       auto  Eval = secular_solver(D, Cor);      
       auto  Evec = evector_extract(Eval, D);
 
       Eval = -1 * Eval;
-
+      Evec = -1 * Evec;
+      
       auto [Eva, Eve, Ort] = sorts<false, false>(Eval, Evec, Or); 
 
       cout << "EVAL: \n";
@@ -952,6 +991,9 @@ MatrixPair eigen_decomp(MatrixT<T, O> &Sym)
 
       auto [D, U, Or] = sorts<true, true>(Diag, Z, Orth); 
       Cor = std::make_pair(rho, U);
+
+      cout << "Or: \n";
+      print_matrix(Or);
 
       auto Eval = secular_solver(D, Cor);
       auto  Evec = evector_extract(Eval, D);
@@ -1204,13 +1246,13 @@ Matrix secular_solver(const MatrixT<T, O> &Diag, const Correction &Cor)
   return Y;  
 }
 
+
 //we have built an eigen decomposition of (D + (pho * Z * Z.transpose))
 //auto buf = Evec * Eig * Evec.transpose();
 template <bool T1, bool O1, bool T2, bool O2>
 Matrix evector_extract(const MatrixT<T1, O1> &Eig, const MatrixT<T2, O2> &Diag)
 {
 
-  print_matrix(Diag);
   const int m = Eig.rows();
   Matrix Evec (m, m);
   Matrix Z (m, 1);
@@ -1389,8 +1431,10 @@ Matrix initial_e_approx(const MatrixT<T, O> &Diag, const Correction &Cor)
   const double h = h_function(Diag, Z, d_max, k - 1);//
   //const double w = secular_function(Diag, Z, rho, mid);
   const double w = h + g;
+  cout << d_max << "\n";
   if ((w <= 0) && (g <= -h))
   {
+    cout << "FIRST\n";
     Y(k, k) = d_max;
   }
 
@@ -1407,11 +1451,13 @@ Matrix initial_e_approx(const MatrixT<T, O> &Diag, const Correction &Cor)
     const double root = std::sqrt((a * a) - (4 * b * c));
     if (a >= 0)
     {
+      cout << "SECOND\n";
       //Making an initial approximation y = tau + d_K
       Y(k, k) = Diag(k, k) + ((a + root) / (2 * c));
     }
     else 
     {
+      cout << "THIRD\n";
       //Making an initial approximation y = tau + d_K
       Y(k, k) = Diag(k, k) + ((2 * b) / (a - root));
     }
@@ -1488,7 +1534,8 @@ void gram_schmidt(MatrixT<T, O> &U, const int i)
     Matrix res (n, 1);
     //random column vector
     Matrix r (n, 1);
-    populate_matrix(r);
+    //populate_matrix(r);
+    r(n - i + j, 0) = 1;
 
     #pragma omp parallel for schedule (auto) reduction (mat_add : res)
     for ( int k = 0; k < i; ++k)

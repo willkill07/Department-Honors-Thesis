@@ -79,48 +79,6 @@ double secular_function_prime(const MatrixT<T1, O1>& Diag, const MatrixT<T2, O2>
   return sum;
 }
 
-
-/*
-  psi - the first one of the functions, used to partition secular equation.
-  Returns the numerical result of a function, given the approximation to an eigenvalue.
-*/
-template <bool T1, bool O1, bool T2, bool O2>
-double psi(const MatrixT<T1, O1>& Diag, const MatrixT<T2, O2>& Z, const double y, const int k)
-{
-  double sum = 0;
-  double z = 0;
-
-  //#pragma omp parallel for reduction(+ : sum)
-  for (int j = 0; j < k; ++j)
-  {
-    z = Z(j, 0);
-    sum += (z * z) / ( Diag(j, j) - y);
-  }
-
-  return sum;
-}
-
-/*
-  phi - the second one of the functions, used to partition secular equation.
-  Returns the numerical result of a function, given the approximation to an eigenvalue.
-*/
-template <bool T1, bool O1, bool T2, bool O2>
-double phi(const MatrixT<T1, O1>& Diag, const MatrixT<T2, O2>& Z, const double y, const int k)
-{
-  const int m = Diag.rows();
-  double sum = 0;
-  double z = 0;
-
-  //#pragma omp parallel for reduction(+ : sum)
-  for (int j = k; j < m; ++j)
-  {
-    z = Z(j, 0);
-    sum += (z * z) / (Diag(j, j) - y);
-  }
-
-  return sum;
-}
-
 /*
   psi_prime - differentiation of the previously-defined psi function 
   with respect to the eigenvalue approximation "y".
@@ -476,6 +434,7 @@ Matrix initial_e_approx(const MatrixT<T, O> &Diag, const Correction &Cor)
   const double w = h + g;
   if ((w <= 0) && (g <= -h))
   {
+    cout << "FIRST\n";
     Y(k, k) = d_max;
   }
 
@@ -492,11 +451,13 @@ Matrix initial_e_approx(const MatrixT<T, O> &Diag, const Correction &Cor)
     const double root = std::sqrt((a * a) - (4 * b * c));
     if (a >= 0)
     {
+      //cout << "SECOND\n";
       //Making an initial approximation y = tau + d_K
       Y(k, k) = Diag(k, k) + ((a + root) / (2 * c));
     }
     else 
     {
+      //cout << "THIRD\n";
       //Making an initial approximation y = tau + d_K
       Y(k, k) = Diag(k, k) + ((2 * b) / (a - root));
     }
@@ -544,9 +505,9 @@ void tridiagonalization(MatrixT<T, O> &Sym)
     W(k + 1, 0) = (0.5) * (leadingVal - alpha); 
 
     auto WTW = W * W.transpose(); 
-    WTW = Matrix::identity(n) + ((-4 / RSQ) * WTW);
+    auto WTW2 = Matrix::identity(n) + ((-4 / RSQ) * WTW);
     //transforming the original matrix
-    Sym = WTW * Sym * WTW;
+    Sym = WTW2 * Sym * WTW2;
   }
 }
 
@@ -988,7 +949,7 @@ Matrix compression (MatrixT<T, O>& Init, const double cutoff)
 
     //if(std::abs(M(0, 0) - Init(0, 0)) < std::pow(10, -4))
 
-    if(!isnan((U * S * V.transpose())(0, 0)))
+    if(!isnan((M)(0, 0)))
     {
       const int n_comp = (int) Init.rows() * cutoff;
       const int m_comp = (int) Init.colms() * cutoff;
@@ -1060,6 +1021,8 @@ Matrix compression (MatrixT<T, O>& Init, const double cutoff)
           Init(i, j) = 0;
         }
       }
+      
+      return Init;
       */
     }
 }
