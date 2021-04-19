@@ -1,11 +1,16 @@
 [
     {
         "arguments": [
-            "g++",
+            "clang++",
             "-c",
-            "-g",
+            "-isystem",
+            "/usr/include/opencv4",
+            "-O3",
+            "-march=native",
             "-std=c++17",
-            "Matrix.h",
+            "-fopenmp",
+            "-Wall",
+            "-Wextra",
             "-o",
             "SVD",
             "SVD.cc"

@@ -6,6 +6,14 @@ Matrix.h - header file, containing the Matrix structure, used in the SVD.cc file
 #ifndef MATRIX_H_
 #define MATRIX_H_
 
+#if !defined(SVD_MAX_OMP_THREADS)
+#define SVD_MAX_OMP_THREADS 4
+#endif
+
+#if !defined(SVD_MAX_PAR_DEPTH)
+#define SVD_MAX_PAR_DEPTH 2
+#endif
+
 /************************************************************/
 // System includes
 #include <iostream>
@@ -16,9 +24,12 @@ Matrix.h - header file, containing the Matrix structure, used in the SVD.cc file
 #include <stdexcept>
 #include <cmath>
 #include <numeric>
+#include <omp.h>
+#include <queue> 
+
 
 template <bool Transpose = false, bool Owning = true> struct MatrixT {
-private:
+
   int rows_;
   int colms_;
   double *data_;
@@ -34,6 +45,7 @@ public:
   using const_reference = const value_type&;
   using const_pointer = const value_type*;
   using MatrixPair = std::pair<MatrixT, MatrixT>;
+  using MatrixQueue = std::queue<MatrixT>; 
 
   using default_type = MatrixT<false, true>;
   
@@ -118,8 +130,8 @@ public:
 
 //
 
-  template <bool Trans, bool Own,
-            typename = std::enable_if_t<(Trans ^ Transpose) | (Own ^ Owning)>>
+  template <bool Trans, bool Own>
+           // typename = std::enable_if_t<(Trans ^ Transpose) | (Own ^ Owning)>>
   MatrixT(MatrixT<Trans, Own> const &other)
       : rows_(other.rows()), colms_(other.colms()), data_(const_cast<double*>(&*other.begin())) {
     if constexpr (Owning) {
@@ -143,22 +155,39 @@ public:
       std::copy_n(other.data_, rows_ * colms_, data_);
     }
   }
+  
 
   MatrixT(MatrixT &&other)
       : rows_(std::exchange(other.rows_, 0)),
         colms_(std::exchange(other.colms_, 0)),
         data_(std::exchange(other.data_, nullptr)) {}
 
-  template <bool Own> MatrixT &operator=(const MatrixT<Transpose, Own> &other) {
+  template <bool Trans, bool Own>
+           // typename = std::enable_if_t<(Trans ^ Transpose) | (Own ^ Owning)>>
+  MatrixT(MatrixT<Trans, Own> &&other)
+      : rows_(std::exchange(other.rows_, 0)),
+        colms_(std::exchange(other.colms_, 0)),
+        data_(std::exchange(other.data_, nullptr)) {
+  }
+
+   MatrixT &operator=(const MatrixT &other) {
     if (&other != this) {
-      MatrixT<Transpose, true> copy(other);
+      MatrixT copy(other);
       std::swap(rows_, copy.rows_);
-      std::swap(colms_, copy.cols_);
-      if constexpr (Owning) {
-        delete[] std::exchange(data_, nullptr);
-      }
+      std::swap(colms_, copy.colms_);
       std::swap(data_, copy.data_);
     }
+    return *this;
+  }
+
+  template <bool Trans, bool Own> MatrixT &operator=(const MatrixT<Trans, Own> &other) {
+    MatrixT<Transpose, true> copy(other);
+    std::swap(rows_, copy.rows_);
+    std::swap(colms_, copy.colms_);
+    if constexpr (Owning) {
+      delete[] std::exchange(data_, nullptr);
+    }
+    std::swap(data_, copy.data_);
     return *this;
   }
 
@@ -183,11 +212,89 @@ public:
   }
 
   /*
+  column_extract - retrieving a column from a matrix at a specified index.
+  */
+
+  default_type column_extract(int pos) 
+  {
+    const int n = this -> rows();
+
+    default_type res (n, 1);
+    
+    for(int i = 0; i < n; ++i)
+    {
+      res(i, 0) = (*this)(i, pos);
+      //(*this)(i, pos) = 0;
+    }
+
+    return res;
+  }
+
+  /*
+  column_immerse - placing the column at the given index.
+  */
+
+  //C for column, D for Destination
+  //Exception would be nice
+  
+  static default_type column_immerse(const MatrixT &C, MatrixT &D,  int pos) 
+  {
+    const int n = D.rows();
+    
+    for(int i = 0; i < n; ++i)
+    {
+      D(i, pos) = C(i, 0);
+    }
+
+    return D;
+  }
+
+  /*
+  column_extract - retrieving a column from a matrix at a specified index.
+  */
+
+  default_type row_extract( int pos) 
+  {
+    const int m = this->colms();
+
+    default_type res (1, m);
+    
+    for(int i = 0; i < m; ++i)
+    {
+      res(0, i) = (*this)(pos, i);
+      //(*this)(i, pos) = 0;
+    }
+
+    return res;
+  }
+
+  /*
+  column_immerse - placing the column at the given index.
+  */
+
+  //C for column, D for Destination
+  //Exception would be nice
+  
+  static default_type row_immerse(const MatrixT &R, MatrixT &D,  int pos) 
+  {
+    int m = D.colms();
+    
+    for(int i = 0; i < m; ++i)
+    {
+      D(pos, i) = R(0, i);
+    }
+
+    return D;
+  }
+
+
+  /*
   cut - intended to cut a block diagonal matrix into the upper and the lower matrix
   Is used in DnC algorithm.
   */
 
-  default_type cut(int stitch, bool upper) const {
+  default_type cut(int stitch, bool upper) const 
+  {
     int originRows = 0;
     int originCols = 0;
     int rows = stitch;
@@ -212,98 +319,6 @@ public:
   }
 
   /*
-  column_extract - retrieving a column from a matrix at a specified index.
-  */
-
-  default_type column_extract( int pos) 
-  {
-    int n = this->rows();
-
-    default_type res (n, 1);
-    
-    for(int i = 0; i < n; ++i)
-    {
-      res(i, 0) = (*this)(i, pos);
-      //(*this)(i, pos) = 0;
-    }
-
-    return res;
-  }
-
-  /*
-  column_immerse - placing the column at the given index.
-  */
-
-  //C for column, D for Destination
-  //Exception would be nice
-  
-  static default_type column_immerse(const MatrixT &C, MatrixT &D,  int pos) 
-  {
-
-    int n = D.rows();
-    int m = D.colms();
-    int k = C.rows();
-
-    if (m != k || pos > n)
-    {
-      //exception
-    }
-    
-    for(int i = 0; i < n; ++i)
-    {
-      D(i, pos) = C(i, 0);
-    }
-
-    return D;
-  }
-
-  /*
-  column_extract - retrieving a column from a matrix at a specified index.
-  */
-
-  default_type row_extract( int pos) 
-  {
-    int m = this->colms();
-
-    default_type res (1, m);
-    
-    for(int i = 0; i < m; ++i)
-    {
-      res(0, i) = (*this)(pos, i);
-      //(*this)(i, pos) = 0;
-    }
-
-    return res;
-  }
-
-  /*
-  column_immerse - placing the column at the given index.
-  */
-
-  //C for column, D for Destination
-  //Exception would be nice
-  
-  static default_type row_immerse(const MatrixT &R, MatrixT &D,  int pos) 
-  {
-
-    int n = D.rows();
-    int m = D.colms();
-    int k = R.colms();
-
-    if (m != k || pos > n)
-    {
-      //exception
-    }
-    
-    for(int i = 0; i < m; ++i)
-    {
-      D(pos, i) = R(0, i);
-    }
-
-    return D;
-  }
-
-  /*
   combine - combines two separate matrices, designated as "hi" and "lo" into one
   block diagonal matrix. Is used in DnC algorithm.
   */
@@ -312,10 +327,10 @@ public:
   static default_type combine(const MatrixT<T1, O1> &hi, const MatrixT<T2, O2> &lo) 
   {
 
-    int a = hi.rows();
-    int b = hi.colms();
-    int c = lo.rows();
-    int d = lo.colms();
+    const int a = hi.rows();
+    const int b = hi.colms();
+    const int c = lo.rows();
+    const int d = lo.colms();
 
     default_type res(a + c, b + d);
 
@@ -349,17 +364,11 @@ public:
   {
 
     const int n = V.rows();
-    const int m = V.colms();
-    double magnitude;
-
-    if(!(m == 1))
-    {
-      // return exception
-    }
+    double magnitude = 0;
 
     for (int i = 0; i < n; ++i)
     {
-      double cell = V(i, m);
+      double cell = V(i, 0);
       magnitude += cell * cell;
     }
 
@@ -380,42 +389,83 @@ public:
     return result;
   }
 
-  /*
-  diagSort - sorts the Matrice's main diagonal in an ascending order.
-  Is used in the Secular Equation solver routine
-
-  
-  template <bool Ascending, bool T1, bool T2, bool O1, bool O2>
-  static MatrixPair sorts(const MatrixT<T1, O1> &Diag, const MatrixT<T2, O2> &Orth)
+  //creates eigenvectors fr exception case
+/*
+  static default_type exception_vec(const int dim)
   {
-    const int m = Diag.rows();
-    default_type D (m, m);
-    default_type O (m, m);
-    std::vector<int> idx (m);
-    std::iota (idx.begin(), idx.end(), 0);
-    
-    sort(idx.begin(), idx.end(), [&](int i, int j)
-    {
-      if constexpr (Ascending)
-      {
-        return Diag(i, i) < Diag(j, j);
-      }
-      else 
-      {
-        return Diag(i, i) > Diag(j, j);
-      }
-    });
+    default_type Evec (dim, dim);
 
-    for (int i = 0; i < m; ++i)
+    Evec(0, 0) = 1;
+    for(int i = 1; i < dim; ++i)
     {
-      const int j = idx[i];
-      D (i, i) = Diag (j, j);
-      column_immerse( Orth.column_extract(j), O, i);
+      Evec(dim - i, i) = 1;
+      Evec(0, i) = -1;
+      Evec(i, 0) = 1;
     }
 
-    return MatrixPair(D, O);
+    return Evec;
   }
   */
+
+  template <bool T, bool O>
+  static MatrixQueue partition (MatrixT<T, O> Init, const int block_size)
+  {
+      const int n = Init.rows();
+      const int m = Init.colms();  
+
+      MatrixQueue Q;
+
+      for (int ii = 0; ii < n; ii += block_size)
+      {
+          for (int jj = 0; jj < m; jj += block_size)
+          {
+              const int r_bound = std::min(ii + block_size, n);
+              const int c_bound = std::min(jj + block_size, m);
+              default_type Block (r_bound - ii, c_bound - jj);
+
+              for(int i = 0; (i + ii) < r_bound; ++i)
+              {
+                  for(int j = 0; (j + jj) < c_bound; ++j)
+                  {
+                      Block(i, j) = Init(i + ii, j + jj);
+                  }
+              }
+              Q.push(Block);
+          }
+      }   
+
+      return Q;
+  }
+
+
+  static default_type assembling (MatrixQueue Q, const int rows, const int colms)
+  {
+    default_type M (rows, colms);
+
+    int row_block = 0;
+    int colmn_block = 0;
+
+    for (int ii = 0; ii < rows; ii += row_block)
+    {
+      for (int jj = 0; jj < colms; jj += colmn_block)
+      {
+        auto piece = Q.front();
+        Q.pop();
+        row_block = piece.rows();
+        colmn_block = piece.colms();
+
+        for (int i = 0; i < row_block; ++i)
+        {
+          for (int j = 0; j < colmn_block; ++j)
+          {
+            M(i + ii, j + jj) = piece(i, j);
+          }
+        }
+      }
+    }
+    return M;
+  }
+  
 };
 
 
@@ -424,26 +474,101 @@ Below - Matrix multiplication and addition definitions.
 */
 using Matrix = MatrixT<>;
 
-template <bool T1, bool T2, bool O1, bool O2>
-Matrix operator*(MatrixT<T1, O1> const &a, MatrixT<T2, O2> const &b) {
+/*
+template <bool T, bool O>
+static bool correction_check(const MatrixT<T, O> &C)
+{
+  const int n = C.rows();
+  const double accuracy = std::pow(10, -10);
 
-  int ar = a.rows();
-  int ac = a.colms();
-  int br = b.rows();
-  int bc = b.colms();
+  for (int i = 1; i < n; ++i)
+  {
+    for(int j = 0; j < n; ++j)
+    {
+      if(std::abs(C(i, i)) < accuracy)
+      {
+        return 1;
+      }
+    }
+  }
+
+  return 0;
+}
+
+
+//used for when matrix consists of identical entries
+template <bool T, bool O>
+static bool eigen_exception(const MatrixT<T, O> &Eig)
+{
+  const int n = Eig.rows();
+  const double accuracy = std::pow(10, -10);
+
+  if(Eig(0, 0) != 0)
+  {
+    for (int i = 1; i < n; ++i)
+    {
+      if(std::abs(Eig(i, i)) < accuracy)
+      {
+        return i;
+      }
+    }
+  }
+
+  return 0;
+}*/
+
+/*
+Below - Matrix multiplication and addition definitions.
+*/
+
+
+template <bool T1, bool T2, bool O1, bool O2>
+Matrix operator*(MatrixT<T1, O1> const &A, MatrixT<T2, O2> const &B) {
+
+  int ar = A.rows();
+  int ac = A.colms();
+  int br = B.rows();
+  int bc = B.colms();
+
+  const int blockSize = 8;
 
   if (ac != br) {
     throw std::runtime_error("Illegal dimensions given. Please, adhere to the formal rules");
   }
   Matrix res(ar, bc);
-
-  for (int i = 0; i < ar; ++i) {
+  
+  // TODO -- determine best loop nesting (parallel)
+  /*for (int i = 0; i < ar; ++i) {
     for (int k = 0; k < ac; ++k) {
       for (int j = 0; j < bc; ++j) {
-        res(i, j) += a(i, k) * b(k, j);
+        res(i, j) += A(i, k) * B(k, j);
       }
     }
+  }*/
+  
+  #ifdef _OPENMP
+  #pragma omp parallel for collapse (2)
+  #endif
+  for (int jj = 0; jj < bc; jj += blockSize) 
+  {
+      for (int kk = 0; kk < ac; kk += blockSize)
+      {
+          for (int i = 0; i < ar; ++i)
+          {
+              for (int j = jj; j < std::min(jj + blockSize , bc); ++j) 
+              {
+                  double sum = 0.0;
+                  #pragma omp simd reduction(+ : sum)
+                  for (int k = kk; k < std::min(kk + blockSize, ac); ++k) 
+                  {
+                      sum += A(i, k) * B(k, j);
+                  }
+                  res(i, j) += sum;
+              }
+          }            
+      }
   }
+
   return res;
 }
 
@@ -470,10 +595,10 @@ Matrix operator*(Scalar a, const MatrixT<T1, O1> &M) {
 template <bool T1, bool T2, bool O1, bool O2>
 Matrix operator+(MatrixT<T1, O1> const &a, MatrixT<T2, O2> const &b) {
 
-  int ar = a.rows();
-  int ac = a.colms();
-  int br = b.rows();
-  int bc = b.colms();
+  const int ar = a.rows();
+  const int ac = a.colms();
+  const int br = b.rows();
+  const int bc = b.colms();
 
   if ((ar != br) && (ac != bc)) {
     throw std::runtime_error("Illegal dimensions given. Please, adhere to the formal rules");
@@ -491,15 +616,19 @@ Matrix res(ar, bc);
   return res;
 }
 
+<<<<<<< HEAD
 #pragma omp declare reduction (mat_add : Matrix : omp_out = omp_out + omp_in) initializer (omp_priv=omp_orig)
+=======
+#pragma omp declare reduction (mat_add : Matrix : omp_out = omp_out + omp_in) initializer (omp_priv = omp_orig)
+>>>>>>> max/master
 
 template <bool T1, bool T2, bool O1, bool O2>
 Matrix operator-(MatrixT<T1, O1> const &a, MatrixT<T2, O2> const &b) {
 
-  int ar = a.rows();
-  int ac = a.colms();
-  int br = b.rows();
-  int bc = b.colms();
+  const int ar = a.rows();
+  const int ac = a.colms();
+  const int br = b.rows();
+  const int bc = b.colms();
 
   if ((ar != br) && (ac != bc)) {
     throw std::runtime_error("Illegal dimensions given. Please, adhere to the formal rules");
@@ -518,6 +647,9 @@ Matrix res(ar, bc);
 }
 
 
-#pragma omp declare reduction (mat_sub : Matrix : omp_out = omp_out + omp_in) initializer (omp_priv=omp_orig)
+#pragma omp declare reduction (mat_sub : MatrixT<true,true> : omp_out = omp_out + omp_in) initializer (omp_priv = omp_orig)
+#pragma omp declare reduction (mat_sub : MatrixT<true,false> : omp_out = omp_out + omp_in) initializer (omp_priv = omp_orig)
+#pragma omp declare reduction (mat_sub : MatrixT<false,false> : omp_out = omp_out + omp_in) initializer (omp_priv = omp_orig)
+#pragma omp declare reduction (mat_sub : MatrixT<false,true> : omp_out = omp_out + omp_in) initializer (omp_priv = omp_orig)
 
 #endif
